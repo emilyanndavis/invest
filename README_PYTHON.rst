@@ -13,6 +13,14 @@ quantify and forecast this return. InVEST enables decision-makers to quantify
 the importance of natural capital, to assess the tradeoffs associated with
 alternative choices, and to integrate conservation and human development.
 
+**This is a test.** It should cause the twine check to fail because there is
+an unexpected indent on the next line.
+    There is an unexpected indent on this line.
+
+**This is a test.** It should cause the twine check to issue a warning because
+*this phrase has an opening asterisk and is missing a closing asterisk.
+
+
 InVEST is licensed under a permissive, modified BSD license.
 
 For more information, see:
