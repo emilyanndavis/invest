@@ -153,51 +153,51 @@ jobs:
   #       if: github.event_name != 'pull_request'
   #       run: make deploy
 
-  # test-source-distribution:
-  #   name: Check sdist
-  #   runs-on: ${{ matrix.os }}
-  #   needs: check-syntax-errors
-  #   strategy:
-  #     matrix:
-  #       python-version: [3.8, 3.9, "3.10", "3.11", "3.12"]
-  #       os: [windows-latest, macos-13]
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 0  # Fetch complete history for accurate versioning
+  test-source-distribution:
+    name: Check sdist
+    runs-on: ${{ matrix.os }}
+    needs: check-syntax-errors
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10", "3.11", "3.12"]
+        os: [windows-latest, macos-13]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch complete history for accurate versioning
 
-  #     - uses: ./.github/actions/setup_env
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #         requirements-files: requirements.txt
-  #         requirements: ${{ env.CONDA_DEFAULT_DEPENDENCIES }}
+      - uses: ./.github/actions/setup_env
+        with:
+          python-version: ${{ matrix.python-version }}
+          requirements-files: requirements.txt
+          requirements: ${{ env.CONDA_DEFAULT_DEPENDENCIES }}
 
-  #     - name: Build source distribution
-  #       run: |
-  #         # Because we're using PEP518 build requirements, the user's
-  #         # computer is guaranteed to have cython available at build
-  #         # time.  Thus, it is no longer necessary to distribute the
-  #         # .cpp files in addition to the .pyx files.
-  #         #
-  #         # Elevating any python warnings to errors to catch build issues ASAP.
-  #         python -W error -m build --sdist
+      - name: Build source distribution
+        run: |
+          # Because we're using PEP518 build requirements, the user's
+          # computer is guaranteed to have cython available at build
+          # time.  Thus, it is no longer necessary to distribute the
+          # .cpp files in addition to the .pyx files.
+          #
+          # Elevating any python warnings to errors to catch build issues ASAP.
+          python -W error -m build --sdist
 
-  #     - name: Install from source distribution
-  #       run : |
-  #         # Install natcap.invest from the sdist in dist/
-  #         pip install $(find dist -name "natcap[._-]invest*")
+      - name: Install from source distribution
+        run : |
+          # Install natcap.invest from the sdist in dist/
+          pip install $(find dist -name "natcap[._-]invest*")
 
-  #         # Model tests should cover model functionality, we just want
-  #         # to be sure that we can import `natcap.invest` here.
-  #         # The point here is to make sure that we can build
-  #         # natcap.invest from source and that it imports.
-  #         python -c "from natcap.invest import *"
+          # Model tests should cover model functionality, we just want
+          # to be sure that we can import `natcap.invest` here.
+          # The point here is to make sure that we can build
+          # natcap.invest from source and that it imports.
+          python -c "from natcap.invest import *"
 
-  #     - name: Set up environment
-  #       run: pip install twine
+      - name: Set up environment
+        run: pip install twine
 
-  #     - name: Check long description with twine
-  #       run: twine check $(find dist -name "natcap[._-]invest*")
+      - name: Check long description with twine
+        run: twine check $(find dist -name "natcap[._-]invest*")
 
       # - uses: actions/upload-artifact@v3
       #   with:
