@@ -197,7 +197,7 @@ jobs:
         run: pip install twine
 
       - name: Check long description with twine
-        run: twine check dist/natcap.invest*
+        run: twine check $(find dist -name "natcap[._-]invest*")
 
       # - uses: actions/upload-artifact@v3
       #   with:
