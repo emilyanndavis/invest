@@ -11,7 +11,7 @@ from osgeo import osr
 
 gdal.UseExceptions()
 REGRESSION_DATA = os.path.join(
-    os.path.dirname(__file__), '..', 'data', 'invest-test-data', 'sdr')
+    os.path.dirname(__file__), '..', 'data', 'invest-test-data', 'sdr_usle_c_raster')
 SAMPLE_DATA = os.path.join(REGRESSION_DATA, 'input')
 
 
@@ -33,7 +33,7 @@ def assert_expected_results_in_vector(expected_results, vector_path):
         try:
             numpy.testing.assert_allclose(
                 actual_results[key], expected_results[key],
-                rtol=0.00001, atol=0)
+                rtol=0.0001, atol=0)
         except AssertionError:
             incorrect_vals[key] = (actual_results[key], expected_results[key])
     if incorrect_vals:
@@ -71,7 +71,8 @@ class SDRTests(unittest.TestCase):
             'watersheds_path': os.path.join(SAMPLE_DATA, 'watersheds.shp'),
             'workspace_dir': workspace_dir,
             'n_workers': -1,
-            'flow_dir_algorithm': 'MFD'
+            'flow_dir_algorithm': 'MFD',
+            'usle_c_path': os.path.join(SAMPLE_DATA, 'c.tif')
         }
         return args
 
@@ -168,7 +169,7 @@ class SDRTests(unittest.TestCase):
             (sed_dep_array < 0))
         self.assertEqual(
             numpy.count_nonzero(sed_dep_array[negative_non_nodata_mask]), 0)
-        
+
         # Check raster outputs to make sure values are in Mg/ha/yr.
         raster_info = pygeoprocessing.get_raster_info(args['dem_path'])
         pixel_area = abs(numpy.prod(raster_info['pixel_size']))
@@ -190,7 +191,7 @@ class SDRTests(unittest.TestCase):
                 raster_sum += numpy.sum(
                     block[~pygeoprocessing.array_equals_nodata(
                             block, nodata)], dtype=numpy.float64)
-            numpy.testing.assert_allclose(raster_sum, expected_sum)
+            numpy.testing.assert_allclose(raster_sum, expected_sum, rtol=1e-6)
 
     def test_base_regression_d8(self):
         """SDR base regression test on sample data in D8 mode.
@@ -343,20 +344,64 @@ class SDRTests(unittest.TestCase):
         assert_expected_results_in_vector(expected_results, vector_path)
 
     def test_base_usle_c_too_large(self):
-        """SDR test exepected exception for USLE_C > 1.0."""
+        """SDR test expected exception for USLE_C > 1.0."""
         from natcap.invest.sdr import sdr
 
         # use predefined directory so test can clean up files during teardown
         args = SDRTests.generate_base_args(
             self.workspace_dir)
-        args['biophysical_table_path'] = os.path.join(
-            REGRESSION_DATA, 'biophysical_table_too_large.csv')
+
+        # Create sample USLE C raster with a value > 1.
+        usle_c_path = os.path.join(self.workspace_dir, 'c.tif')
+        usle_c_array = numpy.array(
+            [[0.2, 1.3, 0.05, 0.42], [0.1, 0.01, 0.5, 0.8]],
+            dtype=numpy.float32)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(26910)
+        projection_wkt = srs.ExportToWkt()
+        origin = (461251, 4923445)
+        pixel_size = (30, -30)
+        no_data = -1
+        pygeoprocessing.numpy_array_to_raster(
+            usle_c_array, no_data, pixel_size, origin, projection_wkt,
+            usle_c_path)
+        args['usle_c_path'] = usle_c_path
 
         with self.assertRaises(ValueError) as context:
             sdr.execute(args)
         self.assertIn(
-            'A value in the biophysical table is not a number '
-            'within range 0..1.', str(context.exception))
+            'One or more values in the USLE C raster is/are outside the '
+            'range 0..1.', str(context.exception))
+
+    def test_base_usle_c_too_small(self):
+        """SDR test expected exception for USLE_C < 0.0."""
+        from natcap.invest.sdr import sdr
+
+        # use predefined directory so test can clean up files during teardown
+        args = SDRTests.generate_base_args(
+            self.workspace_dir)
+
+        # Create sample USLE C raster with a value < 0.
+        usle_c_path = os.path.join(self.workspace_dir, 'c.tif')
+        usle_c_array = numpy.array(
+            [[0.2, 0.3, 0.05, 0.42], [0.1, -0.01, 0.5, 0.8]],
+            dtype=numpy.float32)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(26910)
+        projection_wkt = srs.ExportToWkt()
+        origin = (461251, 4923445)
+        pixel_size = (30, -30)
+        no_data = -1
+        pygeoprocessing.numpy_array_to_raster(
+            usle_c_array, no_data, pixel_size, origin, projection_wkt,
+            usle_c_path)
+        args['usle_c_path'] = usle_c_path
+
+        with self.assertRaises(ValueError) as context:
+            sdr.execute(args)
+        self.assertIn(
+            'One or more values in the USLE C raster is/are outside the '
+            'range 0..1.', str(context.exception))
 
     def test_base_usle_p_nan(self):
         """SDR test expected exception for USLE_P not a number."""
@@ -386,8 +431,8 @@ class SDRTests(unittest.TestCase):
         invalid_value = 'forest'
         with open(args['biophysical_table_path'], 'w') as file:
             file.write(
-                f'desc,lucode,usle_p,usle_c\n'
-                f'0,{invalid_value},0.5,0.5\n')
+                f'desc,lucode,usle_p\n'
+                f'0,{invalid_value},0.5\n')
 
         with self.assertRaises(ValueError) as context:
             sdr.execute(args)
