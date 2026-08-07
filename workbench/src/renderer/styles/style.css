@@ -926,3 +926,73 @@ code {
 .text-italic {
   font-style: italic;
 }
+
+/* Search Modal */
+.search-modal {
+  width: 45rem;
+  min-height: 30rem;
+
+  .modal-body {
+    &:has(.search-spinner) {
+      display: flex;
+    }
+  }
+  .search-spinner {
+    display: block;
+    height: 8rem;
+    width: 8rem;
+    margin: auto;
+    border-width: 1rem;
+    color: var(--invest-green);
+  }
+  .search-error {
+    color: var(--digital-red);
+    font-size: 1.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 3rem 0;
+    .error-icon {
+      height: 1.5rem;
+      width: 1.5rem;
+    }
+  }
+  .search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .search-result {
+    border: 0.125rem solid var(--bootstrap-secondary-gray);
+    border-radius: 0.25rem;
+    padding: 1rem;
+
+    .search-result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0 0 1rem 0;
+    }
+
+    .search-result-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+
+      .form-switch {
+        margin: 0;
+        padding: 0;
+        transform: none;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        gap: 0.5rem;
+
+        input {
+          margin: 0;
+          font-size: 1.5rem;
+        }
+      }
+    }
+  }
+}

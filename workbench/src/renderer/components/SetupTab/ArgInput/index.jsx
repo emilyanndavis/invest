@@ -8,10 +8,12 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import InputGroup from 'react-bootstrap/InputGroup';
 import Modal from 'react-bootstrap/Modal';
-import { MdFolderOpen, MdInfo, MdOpenInNew } from 'react-icons/md';
+import { MdFolderOpen, MdInfo, MdOpenInNew, MdSearch } from 'react-icons/md';
 
 import { ipcMainChannels } from '../../../../main/ipcMainChannels';
 import i18n from '../../../i18n/i18n';
+
+import SearchModal from '../../SearchModal';
 
 const { ipcRenderer } = window.Workbench.electron;
 
@@ -221,7 +223,7 @@ export default function ArgInput({
       <Button
         aria-label={`browse for ${argSpec.name}`}
         className="ms-2"
-        id={inputId}
+        id={`browse-${inputId}`}
         variant="outline-dark"
         value={argSpec.type} // dialog will limit options accordingly
         name={argkey}
@@ -230,6 +232,38 @@ export default function ArgInput({
       >
         <MdFolderOpen />
       </Button>
+    );
+  }
+
+  const [showSearchModal, setShowSearchModal] = useState(false);
+
+  const openSearch = () => {
+    // @TODO: pass contextual info needed to form search query
+    setShowSearchModal(true);
+  };
+
+  let searchButton = <React.Fragment />;
+  // @TODO: define conditions under which search should be available
+  if (true) {
+    searchButton = (
+      <>
+        <Button
+          aria-label={`search for ${argSpec.name}`}
+          className="ms-2"
+          id={`search-${inputId}`}
+          variant="outline-dark"
+          data-argtype={argSpec.type}
+          data-argkey={argkey}
+          onClick={openSearch}
+          disabled={!enabled}
+        >
+          <MdSearch />
+        </Button>
+        <SearchModal
+          show={showSearchModal}
+          closeModal={() => setShowSearchModal(false)}
+        />
+      </>
     );
   }
 
@@ -302,6 +336,7 @@ export default function ArgInput({
           aria-describedby={`${argkey}-feedback`}
         />
         {fileSelector}
+        {searchButton}
       </React.Fragment>
     );
   }
