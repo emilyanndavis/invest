@@ -1,6 +1,6 @@
-import type { SearchResult } from './models';
+import type { DataHubSearchResult } from './models';
 
-export const mockSearchResults: SearchResult[] = [
+export const mockSearchResults: DataHubSearchResult[] = [
   {
     // @TODO: generate unique id, if not provided
     id: 'result-1',

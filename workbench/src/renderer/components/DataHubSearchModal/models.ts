@@ -1,8 +1,11 @@
-export interface SearchQuery {
-  // @TODO
+export interface DataHubSearchQuery {
+  tags: string[],
+  datatype: string,
+  extent: number[],
+  collection: string,
 }
 
-export interface SearchResult {
+export interface DataHubSearchResult {
   id: string,
   title: string,
   description: string,

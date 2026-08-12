@@ -13,7 +13,7 @@ import { MdFolderOpen, MdInfo, MdOpenInNew, MdSearch } from 'react-icons/md';
 import { ipcMainChannels } from '../../../../main/ipcMainChannels';
 import i18n from '../../../i18n/i18n';
 
-import SearchModal from '../../SearchModal';
+import DataHubSearchModal from '../../DataHubSearchModal';
 
 const { ipcRenderer } = window.Workbench.electron;
 
@@ -259,7 +259,7 @@ export default function ArgInput({
         >
           <MdSearch />
         </Button>
-        <SearchModal
+        <DataHubSearchModal
           show={showSearchModal}
           closeModal={() => setShowSearchModal(false)}
         />

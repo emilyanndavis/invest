@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
 
 import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import Spinner from 'react-bootstrap/Spinner';
 import { useTranslation } from 'react-i18next';
@@ -9,9 +10,9 @@ import {
   MdErrorOutline,
 } from 'react-icons/md';
 
-import type { SearchResult } from './models';
+import type { DataHubSearchResult } from './models';
 import { mockSearchResults } from './mockSearchResults';
-import SearchResultCard from './SearchResultCard';
+import DataHubSearchResultCard from './DataHubSearchResultCard';
 
 interface SearchModalProps {
   show: boolean,
@@ -24,7 +25,7 @@ interface SearchModalView {
   footer?: ReactElement,
 }
 
-export default function SearchModal(props: SearchModalProps) {
+export default function DataHubSearchModal(props: SearchModalProps) {
   const {
     show,
     closeModal,
@@ -36,7 +37,9 @@ export default function SearchModal(props: SearchModalProps) {
   const [view, setView] = useState<SearchModalView | null>(null);
   const [searching, setSearching] = useState<boolean>(false);
   const [numSearchResults, setNumSearchResults] = useState<number>(0);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<DataHubSearchResult[]>([]);
+  const [allExpanded, setAllExpanded] = useState<boolean>(false);
+  const [cardsExpanded, setCardsExpanded] = useState<Map<string, boolean>>(new Map());
   const [searchError, setSearchError] = useState<boolean>(false);
 
   const nextStep = () => {
@@ -55,10 +58,32 @@ export default function SearchModal(props: SearchModalProps) {
     // @TODO: move focus to AOI field in setup form
   };
 
+  const toggleExpandCard = (id: string) => {
+    const prevState = cardsExpanded.get(id);
+    // console.log(`toggleExpandCard for id ${id} from ${prevState} to ${!prevState}`);
+    setCardsExpanded(new Map([...cardsExpanded, [id, !prevState]]));
+  };
+
+  const toggleExpandAll = (event: ChangeEvent) => {
+    const checkbox = event.target as HTMLInputElement;
+    // console.log(`expand all? ${checkbox.checked}`);
+    setAllExpanded(checkbox.checked);
+  };
+
+  const expandAllCards = () => {
+    // console.log('expand all cards');
+    setCardsExpanded(new Map(searchResults.map(({id}) => [id, true])));
+  };
+
+  const collapseAllCards = () => {
+    // console.log('collapse all cards');
+    setCardsExpanded(new Map(searchResults.map(({id}) => [id, false])));
+  };
+
   const selectDataset = (url: string) => {
     close();
     // @TODO: populate input field with DH URL
-  }
+  };
 
   const close = () => {
     setStep(0); // Save state or reset?
@@ -79,12 +104,22 @@ export default function SearchModal(props: SearchModalProps) {
       const mockAsyncCall = setTimeout(() => {
         setNumSearchResults(mockSearchResults.length);
         setSearchResults(mockSearchResults);
+        collapseAllCards();
         // setSearchError(true); // uncomment to test error state
         nextStep();
       }, 200);
       return () => clearTimeout(mockAsyncCall);
     }
   }, [searching]);
+
+  // useEffect(() => {
+  //   console.log({cardsExpanded});
+  // }, [cardsExpanded]);
+
+  useEffect(() => {
+    allExpanded ? expandAllCards() : collapseAllCards();
+    // console.log(`allExpanded is now ${allExpanded}`);
+  }, [allExpanded]);
 
   // @TODO: pass these in via props
   const inputType = t('digital elevation model (DEM)');
@@ -136,17 +171,28 @@ export default function SearchModal(props: SearchModalProps) {
       // @TODO: include query params
       numSearchResults
       ? <>
-          <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
-          {/* @TODO: 'expand all' toggle */}
-          <div className="search-results">
+          <div className="search-results-header">
+            <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
+            <Form.Check
+              type="switch" // type="switch" controls styling
+              role="switch" // role="switch" communicates correct semantics to assistive tech
+              id="expand-all"
+              label={t('Expand All')}
+              onChange={toggleExpandAll}
+            />
+          </div>
+          {/* This doesn't work here, but it does when rendered directly inside <Modal.Body>. */}
+          {/* <div className="search-results">
             {searchResults.map((result =>
-              <SearchResultCard
+              <DataHubSearchResultCard
                 key={result.id}
                 datasetDetails={result}
+                expanded={allExpanded}
+                onToggleExpanded={() => toggleExpandCard(result.id)}
                 onSelect={selectDataset}
               />
             ))}
-          </div>
+          </div> */}
         </>
       : <>
           <p>{t('No results found.')}</p>
@@ -191,6 +237,18 @@ export default function SearchModal(props: SearchModalProps) {
       </Modal.Header>
       <Modal.Body>
         {view.body}
+        {/* This works here, but when it's nested in view.body, it doesn't. */}
+        <div className="search-results">
+          {searchResults.map((result =>
+            <DataHubSearchResultCard
+              key={result.id}
+              datasetDetails={result}
+              expanded={cardsExpanded.get(result.id) as boolean}
+              onToggleExpanded={() => toggleExpandCard(result.id)}
+              onSelect={selectDataset}
+            />
+          ))}
+        </div>
       </Modal.Body>
       {
         view.footer &&
