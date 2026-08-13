@@ -58,10 +58,10 @@ export default function DataHubSearchResultCard(
       {
         expanded &&
         <div id={`${id}-details`}>
-          <p className="search-result-description">
+          <p>
             {descriptionPreview}
           </p>
-          <dl>
+          <dl className="search-result-metadata">
             <dt>{t('Tags')}</dt>
             <dd>{tags.join(', ')}</dd>
             <dt>{t('Places')}</dt>
@@ -76,7 +76,7 @@ export default function DataHubSearchResultCard(
             <dd>{created.toString()}</dd>
             <dt>{t('Full Details and Preview')}</dt>
             {/* @TODO: handle external link */}
-            <dd><a href={dataHubUrl}>{t(`${title} (opens in new browser window)`)}</a></dd>
+            <dd><a href={dataHubUrl}>{t(`${title} (opens in web browser)`)}</a></dd>
           </dl>
         </div>
       }

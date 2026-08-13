@@ -13,6 +13,7 @@ import {
 import type { DataHubSearchResult } from './models';
 import { mockSearchResults } from './mockSearchResults';
 import DataHubSearchResultCard from './DataHubSearchResultCard';
+import DataHubSearchParams from './DataHubSearchParams';
 
 interface SearchModalProps {
   show: boolean,
@@ -122,10 +123,15 @@ export default function DataHubSearchModal(props: SearchModalProps) {
   }, [allExpanded]);
 
   // @TODO: pass these in via props
-  const inputType = t('digital elevation model (DEM)');
+  const tags = ['DEM', 'DIGITAL ELEVATION MODEL', 'SOME OTHER TAG', 'ANOTHER TAG', 'YET ANOTHER TAG', 'ONE MORE TAG TO TEST HOW THIS ELEMENT RENDERS WHEN THE LIST OF TAGS IS VERY LONG'];
+  const datatype = 'raster';
+  const extent = [-42, 0, 0, 42];
+  const collection = 'ESA CCI LULC';
+  // const collection = null;
   const aoiExists = true;
   const aoiDisplayName = t('Watersheds vector');
 
+  // @TODO: refactor views (¿into separate components?) so that state can be passed to/from child components as expected.
   const introView: SearchModalView = {
     title: t('Search the Data Hub'),
     body:
@@ -136,12 +142,12 @@ export default function DataHubSearchModal(props: SearchModalProps) {
         </p>
       {
         aoiExists
-        ? <dl>
-            <dt>{t('Type of input')}</dt>
-            <dd>{inputType}</dd>
-            {/* @TODO: add other query params */}
-            {/* @TODO: extract into a reusable snippet (or component) for rendering in results view as well */}
-          </dl>
+        ? <DataHubSearchParams
+            tags={tags}
+            datatype={datatype}
+            extent={extent}
+            collection={collection}
+          />
         : <div className="search-error">
             <MdErrorOutline aria-label={t('Error')} className="error-icon" />
             <span>{t(`Before searching, you must specify a valid ${aoiDisplayName}.`)}</span>
@@ -168,51 +174,60 @@ export default function DataHubSearchModal(props: SearchModalProps) {
   const resultsView: SearchModalView = {
     title: t('Search Results'),
     body:
-      // @TODO: include query params
-      numSearchResults
-      ? <>
-          <div className="search-results-header">
-            <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
-            <Form.Check
-              type="switch" // type="switch" controls styling
-              role="switch" // role="switch" communicates correct semantics to assistive tech
-              id="expand-all"
-              label={t('Expand All')}
-              onChange={toggleExpandAll}
-            />
-          </div>
-          {/* This doesn't work here, but it does when rendered directly inside <Modal.Body>. */}
-          {/* <div className="search-results">
-            {searchResults.map((result =>
-              <DataHubSearchResultCard
-                key={result.id}
-                datasetDetails={result}
-                expanded={allExpanded}
-                onToggleExpanded={() => toggleExpandCard(result.id)}
-                onSelect={selectDataset}
-              />
-            ))}
-          </div> */}
-        </>
-      : <>
-          <p>{t('No results found.')}</p>
-          <p>
-            {t(`We are actively working on adding more datasets to the Data Hub
-            to meet the needs of InVEST users. Please check back later as the
-            collection grows!`)}
-          </p>
-          <p>
-            {t(`In the meantime, if you'd like to explore the Data Hub on your
-              own, you can visit it on the web:`)}
-            {/* @TODO: handle external link */}
-            <a
-              href="https://data.naturalcapitalalliance.stanford.edu/"
-              className="d-flex"
-            >
-              {t(`Natural Capital Alliance Data Hub (opens in new browser window)`)}
-            </a>
-          </p>
-        </>,
+      <>
+        <DataHubSearchParams
+          tags={tags}
+          datatype={datatype}
+          extent={extent}
+          collection={collection}
+        />
+        {
+          numSearchResults
+          ? <>
+              <div className="search-results-header">
+                <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
+                <Form.Check
+                  type="switch" // type="switch" controls styling
+                  role="switch" // role="switch" communicates correct semantics to assistive tech
+                  id="expand-all"
+                  label={t('Expand All')}
+                  onChange={toggleExpandAll}
+                />
+              </div>
+              {/* This doesn't work here, but it does when rendered directly inside <Modal.Body>. */}
+              {/* <div className="search-results">
+                {searchResults.map((result =>
+                  <DataHubSearchResultCard
+                    key={result.id}
+                    datasetDetails={result}
+                    expanded={allExpanded}
+                    onToggleExpanded={() => toggleExpandCard(result.id)}
+                    onSelect={selectDataset}
+                  />
+                ))}
+              </div> */}
+            </>
+          : <>
+              <p>{t('No results found.')}</p>
+              <p>
+                {t(`We are actively working on adding more datasets to the Data Hub
+                to meet the needs of InVEST users. Please check back later as the
+                collection grows!`)}
+              </p>
+              <p>
+                {t(`In the meantime, if you'd like to explore the Data Hub on your
+                  own, you can visit it on the web:`)}
+                {/* @TODO: handle external link */}
+                <a
+                  href="https://data.naturalcapitalalliance.stanford.edu/"
+                  className="d-flex"
+                >
+                  {t(`Natural Capital Alliance Data Hub (opens in new browser window)`)}
+                </a>
+              </p>
+            </>
+        }
+      </>,
       // @TODO: error state (including query params)
   };
 

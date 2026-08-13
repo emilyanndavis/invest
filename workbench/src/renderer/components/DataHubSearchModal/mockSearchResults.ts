@@ -15,7 +15,7 @@ export const mockSearchResults: DataHubSearchResult[] = [
       metadata YML file available for download. More information on the
       source data can found here: https://lpdaac.usgs.gov/products/nasadem_hgtv001/.
     `,
-    tags: ['DEM', 'DIGITAL ELEVATION MODEL', 'INVEST INPUT', 'INVEST-READY', 'NASA'],
+    tags: ['DEM', 'DIGITAL ELEVATION MODEL', 'INVEST INPUT', 'INVEST-READY', 'NASA', 'SOME OTHER TAG', 'ANOTHER TAG', 'YET ANOTHER TAG', 'ONE MORE TAG TO TEST HOW THIS ELEMENT RENDERS WHEN THE LIST OF TAGS IS VERY LONG'],
     places: ['GLOBAL'],
     license: 'Public Domain',
     author: 'Natural Capital Alliance, Stanford University',
