@@ -2066,8 +2066,12 @@ class ModelSpec(ImmutableBaseModel):
 
         spec_dict = self.__dict__.copy()
         # rename 'inputs' to 'args' to stay consistent with the old api
+        # In addition, flatten each top-level input's ``keywords`` into a
+        # single list of strings, to facilitate Data Hub search.
         spec_dict.pop('inputs')
-        spec_dict['args'] = {_input.id: _input for _input in self.inputs}
+        spec_dict['args'] = {
+            _input.id: _input.model_copy(update={'keywords': _input.get_keywords()})
+            for _input in self.inputs}
         spec_dict['outputs'] = {_output.id: _output for _output in self.outputs}
         return json.dumps(spec_dict, default=fallback_serializer, ensure_ascii=False)
 

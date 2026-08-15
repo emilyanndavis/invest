@@ -236,6 +236,12 @@ export default function ArgInput({
   }
 
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState({
+    tags: argSpec.keywords || [],
+    datatype: argSpec.type,
+    extent: [], // @TODO: update when relevant and based on AOI selection
+    collection: null, // @TODO: update when relevant
+  });
 
   const openSearch = () => {
     // @TODO: pass contextual info needed to form search query
@@ -243,8 +249,8 @@ export default function ArgInput({
   };
 
   let searchButton = <React.Fragment />;
-  // @TODO: define conditions under which search should be available
-  if (true) {
+  // @TODO: refine this condition if needed
+  if (['csv', 'vector', 'raster'].includes(argSpec.type)) {
     searchButton = (
       <>
         <Button
@@ -262,6 +268,7 @@ export default function ArgInput({
         <DataHubSearchModal
           show={showSearchModal}
           closeModal={() => setShowSearchModal(false)}
+          query={searchQuery}
         />
       </>
     );
@@ -381,6 +388,7 @@ ArgInput.propTypes = {
     type: PropTypes.string.isRequired,
     required: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
     units: PropTypes.string, // for numbers only
+    keywords: PropTypes.arrayOf(PropTypes.string),
   }).isRequired,
   userguide: PropTypes.string.isRequired,
   isCoreModel: PropTypes.bool.isRequired,
