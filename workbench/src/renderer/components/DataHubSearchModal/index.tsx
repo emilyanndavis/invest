@@ -14,10 +14,12 @@ import type { DataHubSearchResult } from './models';
 import { mockSearchResults } from './mockSearchResults';
 import DataHubSearchResultCard from './DataHubSearchResultCard';
 import DataHubSearchParams from './DataHubSearchParams';
+import type { DataHubSearchQuery } from './DataHubSearchParams/models';
 
 interface SearchModalProps {
   show: boolean,
   closeModal: () => {},
+  query: DataHubSearchQuery,
 }
 
 interface SearchModalView {
@@ -30,6 +32,7 @@ export default function DataHubSearchModal(props: SearchModalProps) {
   const {
     show,
     closeModal,
+    query,
   } = props;
 
   const { t } = useTranslation();
@@ -122,12 +125,6 @@ export default function DataHubSearchModal(props: SearchModalProps) {
     // console.log(`allExpanded is now ${allExpanded}`);
   }, [allExpanded]);
 
-  // @TODO: pass these in via props
-  const tags = ['DEM', 'DIGITAL ELEVATION MODEL', 'SOME OTHER TAG', 'ANOTHER TAG', 'YET ANOTHER TAG', 'ONE MORE TAG TO TEST HOW THIS ELEMENT RENDERS WHEN THE LIST OF TAGS IS VERY LONG'];
-  const datatype = 'raster';
-  const extent = [-42, 0, 0, 42];
-  const collection = 'ESA CCI LULC';
-  // const collection = null;
   const aoiExists = true;
   const aoiDisplayName = t('Watersheds vector');
 
@@ -143,10 +140,10 @@ export default function DataHubSearchModal(props: SearchModalProps) {
       {
         aoiExists
         ? <DataHubSearchParams
-            tags={tags}
-            datatype={datatype}
-            extent={extent}
-            collection={collection}
+            tags={query.tags}
+            datatype={query.datatype}
+            extent={query.extent}
+            collection={query.collection}
           />
         : <div className="search-error">
             <MdErrorOutline aria-label={t('Error')} className="error-icon" />
@@ -176,10 +173,10 @@ export default function DataHubSearchModal(props: SearchModalProps) {
     body:
       <>
         <DataHubSearchParams
-          tags={tags}
-          datatype={datatype}
-          extent={extent}
-          collection={collection}
+          tags={query.tags}
+          datatype={query.datatype}
+          extent={query.extent}
+          collection={query.collection}
         />
         {
           numSearchResults
@@ -222,7 +219,7 @@ export default function DataHubSearchModal(props: SearchModalProps) {
                   href="https://data.naturalcapitalalliance.stanford.edu/"
                   className="d-flex"
                 >
-                  {t(`Natural Capital Alliance Data Hub (opens in new browser window)`)}
+                  {t(`Natural Capital Alliance Data Hub (opens in web browser)`)}
                 </a>
               </p>
             </>

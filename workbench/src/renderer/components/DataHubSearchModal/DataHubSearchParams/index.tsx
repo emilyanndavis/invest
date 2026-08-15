@@ -11,8 +11,13 @@ export default function DataHubSearchParams(query: DataHubSearchQuery) {
       <dd>{query.tags.join(', ')}</dd>
       <dt>{t('Datatype')}</dt>
       <dd>{query.datatype}</dd>
-      <dt>{t('Extent')}</dt>
-      <dd>{query.extent.join(', ')}</dd>
+      {
+        query.extent.length > 0 &&
+        <>
+          <dt>{t('Extent')}</dt>
+          <dd>{query.extent.join(', ')}</dd>
+        </>
+      }
       {
         query.collection &&
         <>
