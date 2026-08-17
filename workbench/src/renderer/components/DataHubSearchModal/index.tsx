@@ -15,6 +15,7 @@ import { mockSearchResults } from './mockSearchResults';
 import DataHubSearchResultCard from './DataHubSearchResultCard';
 import DataHubSearchParams from './DataHubSearchParams';
 import type { DataHubSearchQuery } from './DataHubSearchParams/models';
+import { openLinkInBrowser } from '../../utils';
 
 interface SearchModalProps {
   show: boolean,
@@ -220,6 +221,7 @@ export default function DataHubSearchModal(props: SearchModalProps) {
                 <a
                   href="https://data.naturalcapitalalliance.stanford.edu/"
                   className="d-flex"
+                  onClick={openLinkInBrowser}
                 >
                   {t(`Natural Capital Alliance Data Hub (opens in web browser)`)}
                 </a>

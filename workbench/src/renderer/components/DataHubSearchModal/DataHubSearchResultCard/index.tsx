@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PiCaretCircleDown, PiCaretCircleUp } from 'react-icons/pi';
 
 import type { DataHubSearchResult } from '../models';
+import { openLinkInBrowser } from '../../../utils';
 
 interface DataHubSearchResultCardProps {
   datasetDetails: DataHubSearchResult,
@@ -75,8 +76,14 @@ export default function DataHubSearchResultCard(
             <dt>{t('Created')}</dt>
             <dd>{created.toString()}</dd>
             <dt>{t('Full Details and Preview')}</dt>
-            {/* @TODO: handle external link */}
-            <dd><a href={webpageUrl}>{t(`${title} (opens in web browser)`)}</a></dd>
+            <dd>
+              <a
+                href={webpageUrl}
+                onClick={openLinkInBrowser}
+              >
+                {t(`${title} (opens in web browser)`)}
+              </a>
+            </dd>
           </dl>
         </div>
       }
