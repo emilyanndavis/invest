@@ -217,7 +217,6 @@ export default function DataHubSearchModal(props: SearchModalProps) {
               <p>
                 {t(`In the meantime, if you'd like to explore the Data Hub on your
                   own, you can visit it on the web:`)}
-                {/* @TODO: handle external link */}
                 <a
                   href="https://data.naturalcapitalalliance.stanford.edu/"
                   className="d-flex"
