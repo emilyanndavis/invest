@@ -21,7 +21,8 @@ export const mockSearchResults: DataHubSearchResult[] = [
     author: 'Natural Capital Alliance, Stanford University',
     lastUpdated: new Date(2026, 0, 8, 16, 40),
     created: new Date(2024, 9, 24, 18, 57),
-    dataHubUrl: 'https://data.naturalcapitalalliance.stanford.edu/dataset/sts-2b13519934614f4b36243eaeab5c712f37043413fb6fc314d588229a47808157',
+    datasetUrl: 'https://data.naturalcapitalalliance.stanford.edu/download/global/nasa-hgt-v1-1s/nasa-hgt-v1-1s.tif',
+    webpageUrl: 'https://data.naturalcapitalalliance.stanford.edu/dataset/sts-2b13519934614f4b36243eaeab5c712f37043413fb6fc314d588229a47808157',
   },
   {
     id: 'result-2',
@@ -40,6 +41,7 @@ export const mockSearchResults: DataHubSearchResult[] = [
     author: 'Natural Capital Alliance, Stanford University',
     lastUpdated: new Date(2026, 0, 8, 16, 37),
     created: new Date(2024, 10, 12, 14, 46),
-    dataHubUrl: 'https://data.naturalcapitalalliance.stanford.edu/dataset/sts-632af8dc05ae810188cb2a4862f8a85022f0204daf78a040c9aa9cc248db0fd7',
+    datasetUrl: 'https://data.naturalcapitalalliance.stanford.edu/download/global/aster-v3-1s/aster-v3-1s.tif',
+    webpageUrl: 'https://data.naturalcapitalalliance.stanford.edu/dataset/sts-632af8dc05ae810188cb2a4862f8a85022f0204daf78a040c9aa9cc248db0fd7',
   },
 ];

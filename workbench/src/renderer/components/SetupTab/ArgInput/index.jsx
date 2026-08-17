@@ -159,7 +159,8 @@ export default function ArgInput({
   argkey, argSpec, userguide, isCoreModel, value = undefined,
   touched = false, isValid = undefined, validationMessage = '',
   updateArgValues, handleFocus, selectFile, enabled,
-  dropdownOptions = undefined, inputDropHandler, scrollEventCount = 0
+  dropdownOptions = undefined, inputDropHandler, scrollEventCount = 0,
+  selectSearchResult
 }) {
   const uniqueId = useId();
   const inputRef = useRef();
@@ -268,6 +269,7 @@ export default function ArgInput({
           show={showSearchModal}
           closeModal={() => setShowSearchModal(false)}
           query={searchQuery}
+          selectSearchResult={(url) => selectSearchResult(argkey, url)}
         />
       </>
     );

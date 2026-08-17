@@ -25,7 +25,7 @@ export default function DataHubSearchResultCard(
 
   const {
     id, title, description, tags, places, license,
-    author, lastUpdated, created, dataHubUrl
+    author, lastUpdated, created, datasetUrl, webpageUrl
   } = datasetDetails;
 
   const descriptionPreview = description.slice(0, 430) + '…';
@@ -48,7 +48,7 @@ export default function DataHubSearchResultCard(
             {t('Details')}
           </Button>
           <Button
-            onClick={() => onSelect(dataHubUrl)}
+            onClick={() => onSelect(datasetUrl)}
             aria-describedby={`${id}-title`}
           >
             {t('Select')}
@@ -76,7 +76,7 @@ export default function DataHubSearchResultCard(
             <dd>{created.toString()}</dd>
             <dt>{t('Full Details and Preview')}</dt>
             {/* @TODO: handle external link */}
-            <dd><a href={dataHubUrl}>{t(`${title} (opens in web browser)`)}</a></dd>
+            <dd><a href={webpageUrl}>{t(`${title} (opens in web browser)`)}</a></dd>
           </dl>
         </div>
       }

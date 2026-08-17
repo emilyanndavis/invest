@@ -20,6 +20,7 @@ interface SearchModalProps {
   show: boolean,
   closeModal: () => {},
   query: DataHubSearchQuery,
+  selectSearchResult: (url: string) => {},
 }
 
 interface SearchModalView {
@@ -33,6 +34,7 @@ export default function DataHubSearchModal(props: SearchModalProps) {
     show,
     closeModal,
     query,
+    selectSearchResult,
   } = props;
 
   const { t } = useTranslation();
@@ -85,8 +87,8 @@ export default function DataHubSearchModal(props: SearchModalProps) {
   };
 
   const selectDataset = (url: string) => {
+    selectSearchResult(url);
     close();
-    // @TODO: populate input field with DH URL
   };
 
   const close = () => {

@@ -116,6 +116,12 @@ class ArgsForm extends React.Component {
     }
   }
 
+  selectSearchResult = (argkey, url) => {
+    this.props.updateArgValues(argkey, url);
+    this.props.updateArgTouched(argkey);
+    this.props.triggerScrollEvent();
+  };
+
   render() {
     const {
       argsOrder,
@@ -152,6 +158,7 @@ class ArgsForm extends React.Component {
             validationMessage={argsValidation[argkey].validationMessage}
             value={argsValues[argkey].value}
             scrollEventCount={scrollEventCount}
+            selectSearchResult={this.selectSearchResult}
           />
         );
       });

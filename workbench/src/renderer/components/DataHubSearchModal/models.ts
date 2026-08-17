@@ -8,5 +8,6 @@ export interface DataHubSearchResult {
   author: string,
   lastUpdated: Date,
   created: Date,
-  dataHubUrl: string,
+  datasetUrl: string,
+  webpageUrl: string,
 }
