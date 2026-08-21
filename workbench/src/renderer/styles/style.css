@@ -985,10 +985,11 @@ code {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin: 3rem 0;
+    margin: 3rem auto;
+    max-width: fit-content;
     .error-icon {
-      height: 1.5rem;
-      width: 1.5rem;
+      font-size: 6rem;
+      min-width: fit-content;
     }
   }
 

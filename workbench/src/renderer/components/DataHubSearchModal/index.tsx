@@ -7,7 +7,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import { useTranslation } from 'react-i18next';
 import {
   MdClose,
-  MdErrorOutline,
+  MdSearchOff,
 } from 'react-icons/md';
 
 import type { DataHubSearchResult } from './models';
@@ -17,7 +17,7 @@ import DataHubSearchParams from './DataHubSearchParams';
 import type { DataHubSearchQuery } from './DataHubSearchParams/models';
 import { openLinkInBrowser } from '../../utils';
 
-interface SearchModalProps {
+interface DataHubSearchModalProps {
   show: boolean,
   closeModal: () => {},
   query: DataHubSearchQuery,
@@ -26,11 +26,10 @@ interface SearchModalProps {
 
 interface SearchModalView {
   title: string,
-  body: ReactElement,
   footer?: ReactElement,
 }
 
-export default function DataHubSearchModal(props: SearchModalProps) {
+export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   const {
     show,
     closeModal,
@@ -119,22 +118,103 @@ export default function DataHubSearchModal(props: SearchModalProps) {
     }
   }, [searching]);
 
-  // useEffect(() => {
-  //   console.log({cardsExpanded});
-  // }, [cardsExpanded]);
-
   useEffect(() => {
     allExpanded ? expandAllCards() : collapseAllCards();
     // console.log(`allExpanded is now ${allExpanded}`);
   }, [allExpanded]);
 
-  const aoiExists = true;
+  // @TODO: determine AOI state from context
+  const aoiExists = true; // set `aoiExists` to `false` to test error state
   const aoiDisplayName = t('Watersheds vector');
 
-  // @TODO: refactor views (¿into separate components?) so that state can be passed to/from child components as expected.
   const introView: SearchModalView = {
     title: t('Search the Data Hub'),
-    body:
+    footer:
+      aoiExists
+      ? <Button onClick={search}>{t('Search')}</Button>
+      : <>
+          <Button variant="outline-primary" onClick={close}>{t('OK')}</Button>
+          <Button onClick={goToAoiField}>{t(`Go to ${aoiDisplayName}`)}</Button>
+        </>
+  };
+  const searchingView: SearchModalView = {
+    title: t('Searching…'),
+  };
+  const resultsView: SearchModalView = {
+    title: t('Search Results'),
+  };
+
+  const views: SearchModalView[] = [
+    introView,
+    searchingView,
+    resultsView,
+  ];
+
+  return (
+    view &&
+    <Modal
+      show={show}
+      onHide={close}
+      scrollable
+      contentClassName="search-modal"
+    >
+      <Modal.Header>
+        <Modal.Title as="h1" className="h4">{view.title}</Modal.Title>
+        <Button
+          variant="secondary-outline"
+          onClick={close}
+          aria-label={t('Close modal')}
+        >
+          <MdClose />
+        </Button>
+      </Modal.Header>
+      <Modal.Body>
+        {
+          step === 0 &&
+          <DataHubSearchIntroView
+            aoiExists={aoiExists}
+            aoiDisplayName={aoiDisplayName}
+            query={query}
+          />
+        }
+        {
+          step === 1 &&
+          <DataHubSearchSearchingView />
+        }
+        {
+          step === 2 &&
+          <DataHubSearchResultsView
+            query={query}
+            numSearchResults={numSearchResults}
+            searchResults={searchResults}
+            toggleExpandCard={toggleExpandCard}
+            toggleExpandAll={toggleExpandAll}
+            cardsExpanded={cardsExpanded}
+            selectDataset={selectDataset}
+          />
+        }
+      </Modal.Body>
+      {
+        view.footer &&
+        <Modal.Footer>
+          {view.footer}
+        </Modal.Footer>
+      }
+    </Modal>
+  );
+}
+
+interface IntroViewProps {
+  aoiExists: boolean,
+  aoiDisplayName: string,
+  query: DataHubSearchQuery,
+}
+
+function DataHubSearchIntroView(props: IntroViewProps) {
+  const { aoiExists, aoiDisplayName, query } = props;
+  const { t } = useTranslation();
+
+  return (
       <>
         <p>
           {t(`Search the Natural Capital Alliance Data Hub for datasets you can
@@ -148,129 +228,99 @@ export default function DataHubSearchModal(props: SearchModalProps) {
             extent={query.extent}
             collection={query.collection}
           />
-        : <div className="search-error">
-            <MdErrorOutline aria-label={t('Error')} className="error-icon" />
-            <span>{t(`Before searching, you must specify a valid ${aoiDisplayName}.`)}</span>
-          </div>
+        : <>
+            <div className="search-error">
+              <MdSearchOff aria-label={t('Error')} className="error-icon" />
+              <span>{t(`Before searching, you must specify a valid ${aoiDisplayName}.`)}</span>
+            </div>
+          </>
         }
-      </>,
-    footer:
-      aoiExists
-      ? <Button onClick={search}>{t('Search')}</Button>
-      : <>
-          <Button variant="outline-primary" onClick={close}>{t('OK')}</Button>
-          <Button onClick={goToAoiField}>{t(`Go to ${aoiDisplayName}`)}</Button>
-        </>
-  };
-  const searchingView: SearchModalView = {
-    title: t('Searching…'),
-    body:
-      <>
-        <Spinner animation="border" role="status" className="search-spinner">
-          <span className="visually-hidden">{t('Searching')}</span>
-        </Spinner>
-      </>,
-  };
-  const resultsView: SearchModalView = {
-    title: t('Search Results'),
-    body:
-      <>
-        <DataHubSearchParams
-          tags={query.tags}
-          datatype={query.datatype}
-          extent={query.extent}
-          collection={query.collection}
-        />
-        {
-          numSearchResults
-          ? <>
-              <div className="search-results-header">
-                <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
-                <Form.Check
-                  type="switch" // type="switch" controls styling
-                  role="switch" // role="switch" communicates correct semantics to assistive tech
-                  id="expand-all"
-                  label={t('Expand All')}
-                  onChange={toggleExpandAll}
-                />
-              </div>
-              {/* This doesn't work here, but it does when rendered directly inside <Modal.Body>. */}
-              {/* <div className="search-results">
-                {searchResults.map((result =>
-                  <DataHubSearchResultCard
-                    key={result.id}
-                    datasetDetails={result}
-                    expanded={allExpanded}
-                    onToggleExpanded={() => toggleExpandCard(result.id)}
-                    onSelect={selectDataset}
-                  />
-                ))}
-              </div> */}
-            </>
-          : <>
-              <p>{t('No results found.')}</p>
-              <p>
-                {t(`We are actively working on adding more datasets to the Data Hub
-                to meet the needs of InVEST users. Please check back later as the
-                collection grows!`)}
-              </p>
-              <p>
-                {t(`In the meantime, if you'd like to explore the Data Hub on your
-                  own, you can visit it on the web:`)}
-                <a
-                  href="https://data.naturalcapitalalliance.stanford.edu/"
-                  className="d-flex"
-                  onClick={openLinkInBrowser}
-                >
-                  {t(`Natural Capital Alliance Data Hub (opens in web browser)`)}
-                </a>
-              </p>
-            </>
-        }
-      </>,
-      // @TODO: error state (including query params)
-  };
+      </>
+  );
+}
 
-  const views: SearchModalView[] = [
-    introView,
-    searchingView,
-    resultsView,
-  ];
+function DataHubSearchSearchingView() {
+  const { t } = useTranslation();
 
   return (
-    view &&
-    <Modal show={show} onHide={close} contentClassName="search-modal">
-      <Modal.Header>
-        <Modal.Title as="h1" className="h4">{view.title}</Modal.Title>
-        <Button
-          variant="secondary-outline"
-          onClick={close}
-          aria-label={t('Close modal')}
-        >
-          <MdClose />
-        </Button>
-      </Modal.Header>
-      <Modal.Body>
-        {view.body}
-        {/* This works here, but when it's nested in view.body, it doesn't. */}
-        <div className="search-results">
-          {searchResults.map((result =>
-            <DataHubSearchResultCard
-              key={result.id}
-              datasetDetails={result}
-              expanded={cardsExpanded.get(result.id) as boolean}
-              onToggleExpanded={() => toggleExpandCard(result.id)}
-              onSelect={selectDataset}
-            />
-          ))}
-        </div>
-      </Modal.Body>
+    <>
+      <Spinner animation="border" role="status" className="search-spinner">
+        <span className="visually-hidden">{t('Searching')}</span>
+      </Spinner>
+    </>
+  );
+}
+
+interface ResultsViewProps {
+  query: DataHubSearchQuery,
+  numSearchResults: number,
+  searchResults: DataHubSearchResult[],
+  toggleExpandCard: (id: string) => void,
+  toggleExpandAll: (event: ChangeEvent) => void,
+  cardsExpanded: Map<string, boolean>,
+  selectDataset: (url: string) => void,
+}
+
+function DataHubSearchResultsView(props: ResultsViewProps) {
+  const {
+    query, numSearchResults, searchResults, toggleExpandCard,
+    toggleExpandAll, cardsExpanded, selectDataset } = props;
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <DataHubSearchParams
+        tags={query.tags}
+        datatype={query.datatype}
+        extent={query.extent}
+        collection={query.collection}
+      />
       {
-        view.footer &&
-        <Modal.Footer>
-          {view.footer}
-        </Modal.Footer>
+        numSearchResults
+        ? <>
+            <div className="search-results-header">
+              <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
+              <Form.Check
+                type="switch" // type="switch" controls styling
+                role="switch" // role="switch" communicates correct semantics to assistive tech
+                id="expand-all"
+                label={t('Expand All')}
+                onChange={toggleExpandAll}
+              />
+            </div>
+            <div className="search-results">
+              {searchResults.map((result =>
+                <DataHubSearchResultCard
+                  key={result.id}
+                  datasetDetails={result}
+                  expanded={cardsExpanded.get(result.id) as boolean}
+                  onToggleExpanded={() => toggleExpandCard(result.id)}
+                  onSelect={selectDataset}
+                />
+              ))}
+            </div>
+          </>
+        : <>
+            <p>{t('No results found.')}</p>
+            <p>
+              {t(`We are actively working on adding more datasets to the Data Hub
+              to meet the needs of InVEST users. Please check back later as the
+              collection grows!`)}
+            </p>
+            <p>
+              {t(`In the meantime, if you'd like to explore the Data Hub on your
+                own, you can visit it on the web:`)}
+              <a
+                href="https://data.naturalcapitalalliance.stanford.edu/"
+                className="d-flex"
+                onClick={openLinkInBrowser}
+              >
+                {t(`Natural Capital Alliance Data Hub (opens in web browser)`)}
+              </a>
+            </p>
+          </>
       }
-    </Modal>
+      {/* @TODO: error state */}
+    </>
   );
 }
