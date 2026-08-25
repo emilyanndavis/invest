@@ -7,6 +7,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import { useTranslation } from 'react-i18next';
 import {
   MdClose,
+  MdErrorOutline,
   MdSearchOff,
 } from 'react-icons/md';
 
@@ -28,6 +29,10 @@ interface SearchModalView {
   title: string,
   footer?: ReactElement,
 }
+
+const INTRO_STEP = 0;
+const SEARCHING_STEP = 1;
+const RESULTS_STEP = 2;
 
 export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   const {
@@ -55,7 +60,8 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
   const search = () => {
     // console.log('searching...');
-    nextStep();
+    setStep(SEARCHING_STEP);
+    setSearchError(false);
     setSearching(true);
   };
 
@@ -112,8 +118,9 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
         setSearchResults(mockSearchResults);
         collapseAllCards();
         // setSearchError(true); // uncomment to test error state
+        setSearching(false);
         nextStep();
-      }, 200);
+      }, 350);
       return () => clearTimeout(mockAsyncCall);
     }
   }, [searching]);
@@ -142,6 +149,12 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   };
   const resultsView: SearchModalView = {
     title: t('Search Results'),
+    footer:
+      searchError
+      ? <>
+          <Button onClick={search}>{t('Search again')}</Button>
+        </>
+      : <></>
   };
 
   const views: SearchModalView[] = [
@@ -185,6 +198,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
           step === 2 &&
           <DataHubSearchResultsView
             query={query}
+            searchError={searchError}
             numSearchResults={numSearchResults}
             searchResults={searchResults}
             toggleExpandCard={toggleExpandCard}
@@ -253,6 +267,7 @@ function DataHubSearchSearchingView() {
 
 interface ResultsViewProps {
   query: DataHubSearchQuery,
+  searchError: boolean,
   numSearchResults: number,
   searchResults: DataHubSearchResult[],
   toggleExpandCard: (id: string) => void,
@@ -263,8 +278,8 @@ interface ResultsViewProps {
 
 function DataHubSearchResultsView(props: ResultsViewProps) {
   const {
-    query, numSearchResults, searchResults, toggleExpandCard,
-    toggleExpandAll, cardsExpanded, selectDataset } = props;
+    query, searchError, numSearchResults, searchResults,
+    toggleExpandCard, toggleExpandAll, cardsExpanded, selectDataset } = props;
   const { t } = useTranslation();
 
   return (
@@ -276,49 +291,68 @@ function DataHubSearchResultsView(props: ResultsViewProps) {
         collection={query.collection}
       />
       {
-        numSearchResults
+        searchError
         ? <>
-            <div className="search-results-header">
-              <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
-              <Form.Check
-                type="switch" // type="switch" controls styling
-                role="switch" // role="switch" communicates correct semantics to assistive tech
-                id="expand-all"
-                label={t('Expand All')}
-                onChange={toggleExpandAll}
-              />
+            <div className="search-error">
+              <MdErrorOutline aria-label={t('Error')} className="error-icon" />
+              <span>
+                {t(`An error occurred. Please check your internet connection, then try again.
+                  If the problem persists, consider reporting it on the NatCap Community Forum.`)}
+              </span>
             </div>
-            <div className="search-results">
-              {searchResults.map((result =>
-                <DataHubSearchResultCard
-                  key={result.id}
-                  datasetDetails={result}
-                  expanded={cardsExpanded.get(result.id) as boolean}
-                  onToggleExpanded={() => toggleExpandCard(result.id)}
-                  onSelect={selectDataset}
-                />
-              ))}
-            </div>
+            <a
+              href="https://community.naturalcapitalalliance.org/"
+              className="d-flex justify-content-center"
+              onClick={openLinkInBrowser}
+            >
+              {t('Natural Capital Alliance Community Forum (opens in web browser)')}
+            </a>
           </>
-        : <>
-            <p>{t('No results found.')}</p>
-            <p>
-              {t(`We are actively working on adding more datasets to the Data Hub
-              to meet the needs of InVEST users. Please check back later as the
-              collection grows!`)}
-            </p>
-            <p>
-              {t(`In the meantime, if you'd like to explore the Data Hub on your
-                own, you can visit it on the web:`)}
-              <a
-                href="https://data.naturalcapitalalliance.stanford.edu/"
-                className="d-flex"
-                onClick={openLinkInBrowser}
-              >
-                {t(`Natural Capital Alliance Data Hub (opens in web browser)`)}
-              </a>
-            </p>
-          </>
+        : (
+            numSearchResults
+            ? <>
+                <div className="search-results-header">
+                  <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
+                  <Form.Check
+                    type="switch" // type="switch" controls styling
+                    role="switch" // role="switch" communicates correct semantics to assistive tech
+                    id="expand-all"
+                    label={t('Expand All')}
+                    onChange={toggleExpandAll}
+                  />
+                </div>
+                <div className="search-results">
+                  {searchResults.map((result =>
+                    <DataHubSearchResultCard
+                      key={result.id}
+                      datasetDetails={result}
+                      expanded={cardsExpanded.get(result.id) as boolean}
+                      onToggleExpanded={() => toggleExpandCard(result.id)}
+                      onSelect={selectDataset}
+                    />
+                  ))}
+                </div>
+              </>
+            : <>
+                <p>{t('No results found.')}</p>
+                <p>
+                  {t(`We are actively working on adding more datasets to the Data Hub
+                  to meet the needs of InVEST users. Please check back later as the
+                  collection grows!`)}
+                </p>
+                <p>
+                  {t(`In the meantime, if you'd like to explore the Data Hub on your
+                    own, you can visit it on the web:`)}
+                  <a
+                    href="https://data.naturalcapitalalliance.stanford.edu/"
+                    className="d-flex"
+                    onClick={openLinkInBrowser}
+                  >
+                    {t(`Natural Capital Alliance Data Hub (opens in web browser)`)}
+                  </a>
+                </p>
+              </>
+          )
       }
       {/* @TODO: error state */}
     </>
