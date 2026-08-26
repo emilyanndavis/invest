@@ -16,6 +16,15 @@ function dragOverHandler(event) {
   event.dataTransfer.dropEffect = 'copy';
 }
 
+function getAoiInputName(argsSpec) {
+  for (let key in argsSpec) {
+    if (argsSpec[key].is_aoi) {
+      return argsSpec[key].name;
+    }
+  }
+  return '';
+}
+
 /** Renders a form with a list of input components. */
 class ArgsForm extends React.Component {
   constructor(props) {
@@ -28,6 +37,7 @@ class ArgsForm extends React.Component {
     this.dragLeaveHandler = this.dragLeaveHandler.bind(this);
     this.formRef = React.createRef(); // For dragging CSS
     this.dragDepth = 0; // To determine Form dragging CSS
+    this.aoiInputName = getAoiInputName(props.argsSpec);
   }
 
   async onArchiveDragDrop(event) {
@@ -158,6 +168,7 @@ class ArgsForm extends React.Component {
             validationMessage={argsValidation[argkey].validationMessage}
             value={argsValues[argkey].value}
             scrollEventCount={scrollEventCount}
+            aoiInputName={this.aoiInputName}
             selectSearchResult={this.selectSearchResult}
           />
         );

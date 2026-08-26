@@ -216,7 +216,8 @@ MODEL_SPEC = spec.ModelSpec(
                     units=None
                 )
             ],
-            projected=None
+            projected=None,
+            is_aoi=True
         )
     ],
     outputs=[

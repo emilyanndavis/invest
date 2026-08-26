@@ -991,6 +991,11 @@ code {
       font-size: 6rem;
       min-width: fit-content;
     }
+    .aoi-input-name {
+      display: block;
+      text-transform: capitalize;
+      margin: 1rem 0 0 0;
+    }
   }
 
   .search-results {

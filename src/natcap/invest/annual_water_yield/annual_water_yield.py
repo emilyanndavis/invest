@@ -237,7 +237,8 @@ MODEL_SPEC = spec.ModelSpec(
                     about=gettext("Unique identifier for each watershed.")
                 )
             ],
-            projected=True
+            projected=True,
+            is_aoi=True
         ),
         spec.VectorInput(
             id="sub_watersheds_path",

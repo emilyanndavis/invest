@@ -164,7 +164,8 @@ MODEL_SPEC = spec.ModelSpec(
                     units=None
                 )
             ],
-            projected=None
+            projected=None,
+            is_aoi=True
         ),
         spec.NumberInput(
             id="urban_nature_demand",

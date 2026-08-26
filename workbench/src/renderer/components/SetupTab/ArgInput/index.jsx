@@ -160,7 +160,7 @@ export default function ArgInput({
   touched = false, isValid = undefined, validationMessage = '',
   updateArgValues, handleFocus, selectFile, enabled,
   dropdownOptions = undefined, inputDropHandler, scrollEventCount = 0,
-  selectSearchResult
+  aoiInputName, selectSearchResult
 }) {
   const uniqueId = useId();
   const inputRef = useRef();
@@ -249,8 +249,10 @@ export default function ArgInput({
   };
 
   let searchButton = <React.Fragment />;
-  // @TODO: refine this condition if needed
-  if (['csv', 'vector', 'raster'].includes(argSpec.type)) {
+  // @TODO: refine this condition if needed (e.g., should all vector inputs be skipped?)
+  if (isCoreModel && aoiInputName && aoiInputName !== argSpec.name
+      && ['csv', 'vector', 'raster'].includes(argSpec.type)
+  ) {
     searchButton = (
       <>
         <Button
@@ -269,6 +271,7 @@ export default function ArgInput({
           show={showSearchModal}
           closeModal={() => setShowSearchModal(false)}
           query={searchQuery}
+          aoiInputName={aoiInputName}
           selectSearchResult={(url) => selectSearchResult(argkey, url)}
         />
       </>

@@ -68,7 +68,8 @@ MODEL_SPEC = spec.ModelSpec(
                 "POINT",
             },
             fields=[],
-            projected=None
+            projected=None,
+            is_aoi=True
         ),
         spec.BooleanInput(
             id="snap_points",

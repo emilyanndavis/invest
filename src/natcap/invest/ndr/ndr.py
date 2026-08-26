@@ -76,7 +76,9 @@ MODEL_SPEC = spec.ModelSpec(
             units=u.none,
             projected=None
         ),
-        spec.PROJECTED_WATERSHED_VECTOR,
+        spec.PROJECTED_WATERSHED_VECTOR.model_copy(update={
+            'is_aoi': True
+        }),
         spec.CSVInput(
             id="biophysical_table_path",
             name=gettext("biophysical table"),

@@ -22,6 +22,7 @@ interface DataHubSearchModalProps {
   show: boolean,
   closeModal: () => {},
   query: DataHubSearchQuery,
+  aoiInputName: string,
   selectSearchResult: (url: string) => {},
 }
 
@@ -39,6 +40,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     show,
     closeModal,
     query,
+    aoiInputName,
     selectSearchResult,
   } = props;
 
@@ -115,6 +117,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
       // @TODO: initiate search, then call nextStep on response
       const mockAsyncCall = setTimeout(() => {
         setNumSearchResults(mockSearchResults.length);
+        // setNumSearchResults(0); // uncomment to test "no results" state
         setSearchResults(mockSearchResults);
         collapseAllCards();
         // setSearchError(true); // uncomment to test error state
@@ -131,18 +134,14 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   }, [allExpanded]);
 
   // @TODO: determine AOI state from context
-  const aoiExists = true; // set `aoiExists` to `false` to test error state
-  const aoiDisplayName = t('Watersheds vector');
+  const aoiExists = false; // set `aoiExists` to `false` to test error state
 
   const introView: SearchModalView = {
     title: t('Search the Data Hub'),
     footer:
       aoiExists
       ? <Button onClick={search}>{t('Search')}</Button>
-      : <>
-          <Button variant="outline-primary" onClick={close}>{t('OK')}</Button>
-          <Button onClick={goToAoiField}>{t(`Go to ${aoiDisplayName}`)}</Button>
-        </>
+      : <Button onClick={close}>{t('OK')}</Button>
   };
   const searchingView: SearchModalView = {
     title: t('Searching…'),
@@ -186,7 +185,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
           step === 0 &&
           <DataHubSearchIntroView
             aoiExists={aoiExists}
-            aoiDisplayName={aoiDisplayName}
+            aoiInputName={aoiInputName}
             query={query}
           />
         }
@@ -220,12 +219,12 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
 interface IntroViewProps {
   aoiExists: boolean,
-  aoiDisplayName: string,
+  aoiInputName: string,
   query: DataHubSearchQuery,
 }
 
 function DataHubSearchIntroView(props: IntroViewProps) {
-  const { aoiExists, aoiDisplayName, query } = props;
+  const { aoiExists, aoiInputName, query } = props;
   const { t } = useTranslation();
 
   return (
@@ -245,7 +244,10 @@ function DataHubSearchIntroView(props: IntroViewProps) {
         : <>
             <div className="search-error">
               <MdSearchOff aria-label={t('Error')} className="error-icon" />
-              <span>{t(`Before searching, you must specify a valid ${aoiDisplayName}.`)}</span>
+              <span>
+                {t(`Before searching, you must specify the following input:`)}
+                <strong className="aoi-input-name">{aoiInputName}</strong>
+              </span>
             </div>
           </>
         }
@@ -354,7 +356,6 @@ function DataHubSearchResultsView(props: ResultsViewProps) {
               </>
           )
       }
-      {/* @TODO: error state */}
     </>
   );
 }

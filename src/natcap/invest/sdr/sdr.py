@@ -94,7 +94,8 @@ MODEL_SPEC = spec.ModelSpec(
                 "Map of the boundaries of the watershed(s) over which to aggregate"
                 " results. Each watershed should contribute to a point of interest where"
                 " water quality will be analyzed."
-            )
+            ),
+            is_aoi=True
         )),
         spec.CSVInput(
             id="biophysical_table_path",

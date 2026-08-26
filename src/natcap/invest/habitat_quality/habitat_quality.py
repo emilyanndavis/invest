@@ -201,7 +201,8 @@ MODEL_SPEC = spec.ModelSpec(
                     units=None
                 )
             ],
-            projected=False
+            projected=False,
+            is_aoi=True
         ),
         spec.CSVInput(
             id="sensitivity_table_path",
