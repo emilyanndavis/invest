@@ -49,6 +49,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["ndvi_base", "ndvi_alt"],
         ["lulc_base", "lulc_alt", "lulc_attr_csv"]
     ],
+    aoi_input_id="aoi_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,

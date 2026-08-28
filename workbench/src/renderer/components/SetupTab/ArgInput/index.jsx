@@ -160,7 +160,7 @@ export default function ArgInput({
   touched = false, isValid = undefined, validationMessage = '',
   updateArgValues, handleFocus, selectFile, enabled,
   dropdownOptions = undefined, inputDropHandler, scrollEventCount = 0,
-  aoiInputName, selectSearchResult
+  aoiInputName, aoiIsValid, selectSearchResult,
 }) {
   const uniqueId = useId();
   const inputRef = useRef();
@@ -272,6 +272,7 @@ export default function ArgInput({
           closeModal={() => setShowSearchModal(false)}
           query={searchQuery}
           aoiInputName={aoiInputName}
+          aoiIsValid={aoiIsValid}
           selectSearchResult={(url) => selectSearchResult(argkey, url)}
         />
       </>

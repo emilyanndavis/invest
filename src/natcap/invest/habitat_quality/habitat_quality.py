@@ -40,6 +40,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["threats_table_path", "access_vector_path",
          "sensitivity_table_path", "half_saturation_constant"]
     ],
+    aoi_input_id="access_vector_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,
@@ -201,8 +202,7 @@ MODEL_SPEC = spec.ModelSpec(
                     units=None
                 )
             ],
-            projected=False,
-            is_aoi=True
+            projected=False
         ),
         spec.CSVInput(
             id="sensitivity_table_path",

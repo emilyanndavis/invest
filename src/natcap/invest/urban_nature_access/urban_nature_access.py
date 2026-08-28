@@ -72,6 +72,7 @@ MODEL_SPEC = spec.ModelSpec(
         ],
         ["search_radius_mode", "decay_function", "search_radius"]
     ],
+    aoi_input_id="admin_boundaries_vector_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,
@@ -164,8 +165,7 @@ MODEL_SPEC = spec.ModelSpec(
                     units=None
                 )
             ],
-            projected=None,
-            is_aoi=True
+            projected=None
         ),
         spec.NumberInput(
             id="urban_nature_demand",

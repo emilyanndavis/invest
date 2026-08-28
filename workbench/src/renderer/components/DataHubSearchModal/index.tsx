@@ -23,6 +23,7 @@ interface DataHubSearchModalProps {
   closeModal: () => {},
   query: DataHubSearchQuery,
   aoiInputName: string,
+  aoiIsValid: boolean,
   selectSearchResult: (url: string) => {},
 }
 
@@ -41,6 +42,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     closeModal,
     query,
     aoiInputName,
+    aoiIsValid,
     selectSearchResult,
   } = props;
 
@@ -133,27 +135,14 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     // console.log(`allExpanded is now ${allExpanded}`);
   }, [allExpanded]);
 
-  // @TODO: determine AOI state from context
-  const aoiExists = false; // set `aoiExists` to `false` to test error state
-
   const introView: SearchModalView = {
     title: t('Search the Data Hub'),
-    footer:
-      aoiExists
-      ? <Button onClick={search}>{t('Search')}</Button>
-      : <Button onClick={close}>{t('OK')}</Button>
   };
   const searchingView: SearchModalView = {
     title: t('Searching…'),
   };
   const resultsView: SearchModalView = {
     title: t('Search Results'),
-    footer:
-      searchError
-      ? <>
-          <Button onClick={search}>{t('Search again')}</Button>
-        </>
-      : <></>
   };
 
   const views: SearchModalView[] = [
@@ -182,20 +171,20 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
       </Modal.Header>
       <Modal.Body>
         {
-          step === 0 &&
-          <DataHubSearchIntroView
-            aoiExists={aoiExists}
+          step === INTRO_STEP &&
+          <DataHubSearchIntroBody
             aoiInputName={aoiInputName}
+            aoiIsValid={aoiIsValid}
             query={query}
           />
         }
         {
-          step === 1 &&
-          <DataHubSearchSearchingView />
+          step === SEARCHING_STEP &&
+          <DataHubSearchSearchingBody />
         }
         {
-          step === 2 &&
-          <DataHubSearchResultsView
+          step === RESULTS_STEP &&
+          <DataHubSearchResultsBody
             query={query}
             searchError={searchError}
             numSearchResults={numSearchResults}
@@ -208,23 +197,35 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
         }
       </Modal.Body>
       {
-        view.footer &&
+        step === INTRO_STEP &&
         <Modal.Footer>
-          {view.footer}
+          <DataHubSearchIntroFooter
+            aoiIsValid={aoiIsValid}
+            search={search}
+            close={close}
+          />
+        </Modal.Footer>
+      }
+      {
+        step === RESULTS_STEP && searchError &&
+        <Modal.Footer>
+          <DataHubSearchResultsFooter
+            searchError={searchError}
+            search={search}
+          />
         </Modal.Footer>
       }
     </Modal>
   );
 }
 
-interface IntroViewProps {
-  aoiExists: boolean,
+interface IntroBodyProps {
   aoiInputName: string,
   query: DataHubSearchQuery,
 }
 
-function DataHubSearchIntroView(props: IntroViewProps) {
-  const { aoiExists, aoiInputName, query } = props;
+function DataHubSearchIntroBody(props: IntroBodyProps) {
+  const { aoiIsValid, aoiInputName, query } = props;
   const { t } = useTranslation();
 
   return (
@@ -234,7 +235,7 @@ function DataHubSearchIntroView(props: IntroViewProps) {
             use in InVEST without having to download them first.`)}
         </p>
       {
-        aoiExists
+        aoiIsValid
         ? <DataHubSearchParams
             tags={query.tags}
             datatype={query.datatype}
@@ -245,7 +246,7 @@ function DataHubSearchIntroView(props: IntroViewProps) {
             <div className="search-error">
               <MdSearchOff aria-label={t('Error')} className="error-icon" />
               <span>
-                {t(`Before searching, you must specify the following input:`)}
+                {t(`Before searching, you must specify a valid path for the following input:`)}
                 <strong className="aoi-input-name">{aoiInputName}</strong>
               </span>
             </div>
@@ -255,7 +256,7 @@ function DataHubSearchIntroView(props: IntroViewProps) {
   );
 }
 
-function DataHubSearchSearchingView() {
+function DataHubSearchSearchingBody() {
   const { t } = useTranslation();
 
   return (
@@ -267,7 +268,7 @@ function DataHubSearchSearchingView() {
   );
 }
 
-interface ResultsViewProps {
+interface ResultsBodyProps {
   query: DataHubSearchQuery,
   searchError: boolean,
   numSearchResults: number,
@@ -278,7 +279,7 @@ interface ResultsViewProps {
   selectDataset: (url: string) => void,
 }
 
-function DataHubSearchResultsView(props: ResultsViewProps) {
+function DataHubSearchResultsBody(props: ResultsBodyProps) {
   const {
     query, searchError, numSearchResults, searchResults,
     toggleExpandCard, toggleExpandAll, cardsExpanded, selectDataset } = props;
@@ -357,5 +358,32 @@ function DataHubSearchResultsView(props: ResultsViewProps) {
           )
       }
     </>
+  );
+}
+
+function DataHubSearchIntroFooter(
+  props: {aoiIsValid: boolean, search: () => void, close: () => void,}
+) {
+  const { aoiIsValid, search, close } = props;
+  const { t } = useTranslation();
+
+  return (
+      aoiIsValid
+      ? <Button onClick={search}>{t('Search')}</Button>
+      : <Button onClick={close}>{t('OK')}</Button>
+  );
+}
+
+function DataHubSearchResultsFooter(
+  props: {searchError: boolean, search: () => void}
+) {
+  const { searchError, search } = props;
+  const { t } = useTranslation();
+
+  return (
+      searchError &&
+      <>
+        <Button onClick={search}>{t('Search again')}</Button>
+      </>
   );
 }

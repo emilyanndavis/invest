@@ -34,6 +34,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["adjust_retention_ratios", "retention_radius", "road_centerlines_path"],
         ["aggregate_areas_path", "replacement_cost"]
     ],
+    aoi_input_id="aggregate_areas_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,

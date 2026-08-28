@@ -669,14 +669,6 @@ class VectorInput(SpatialFileInput):
 
     rst_section: typing.ClassVar[str] = 'vector'
 
-    is_aoi: bool = False
-    """Whether this vector input functions as the Area of Interest (AOI) in a
-    model. While some models explicitly call this input "Area of Interest",
-    others do not. (For example, the "Watersheds" vector functions as the AOI
-    in some hydrological models.) A model spec must have no more than one
-    input with ``is_aoi == True``.
-    """
-
     _fields_dict: dict[str, Input] = {}
 
     @model_validator(mode='after')
@@ -1958,6 +1950,14 @@ class ModelSpec(ImmutableBaseModel):
     Example: ``[['workspace_dir', 'results_suffix'], ['foo'], ['bar', baz']]``
     """
 
+    aoi_input_id: str = ''
+    """The ``id`` of the model input that functions as the Area of Interest
+    (AOI). While some models explicitly call this input "Area of Interest",
+    others do not. (For example, the "Watersheds" vector functions as the AOI
+    in some hydrological models.) If an ``aoi_input_id`` is specified, it must
+    refer to a ``VectorInput``.
+    """
+
     inputs: list[Input]
     """A list of the data inputs, or parameters, to the model."""
 
@@ -2028,15 +2028,16 @@ class ModelSpec(ImmutableBaseModel):
         return self
 
     @model_validator(mode='after')
-    def check_no_more_than_one_aoi_input(self):
-        """Make sure there is no more than one input with ``is_aoi == True``."""
-        aoi_count = 0
-        for _input in self.inputs:
-            if hasattr(_input, 'is_aoi') and _input.is_aoi:
-                aoi_count += 1
-        if aoi_count > 1:
-            raise ValueError(
-                'Found more than one input with `is_aoi == True`.')
+    def check_aoi_input_id(self):
+        """Make sure ``aoi_input_id`` refers to a valid vector input."""
+        if self.aoi_input_id:
+            try:
+                aoi_input = self.get_input(self.aoi_input_id)
+            except KeyError:
+                raise KeyError(
+                    f'Invalid aoi_input_id. No input with id {self.aoi_input_id}.')
+            if not isinstance(aoi_input, VectorInput):
+                raise TypeError('aoi_input_id must refer to a VectorInput.')
         return self
 
     def get_input(self, key: str) -> Input:
@@ -2407,8 +2408,7 @@ AOI = VectorInput(
         "A map of areas over which to aggregate and summarize the final results."
     ),
     geometry_types={"POLYGON", "MULTIPOLYGON"},
-    fields=[],
-    is_aoi=True
+    fields=[]
 )
 LULC = SingleBandRasterInput(
     id="lulc_path",

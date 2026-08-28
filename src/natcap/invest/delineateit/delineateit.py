@@ -35,6 +35,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["dem_path", "detect_pour_points", "outlet_vector_path", "skip_invalid_geometry"],
         ["snap_points", "flow_threshold", "snap_distance"]
     ],
+    aoi_input_id="outlet_vector_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,
@@ -68,8 +69,7 @@ MODEL_SPEC = spec.ModelSpec(
                 "POINT",
             },
             fields=[],
-            projected=None,
-            is_aoi=True
+            projected=None
         ),
         spec.BooleanInput(
             id="snap_points",

@@ -55,6 +55,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["flow_dir_algorithm", "threshold_flow_accumulation",
          "k_param", "runoff_proxy_av"]
     ],
+    aoi_input_id="watersheds_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,
@@ -76,9 +77,7 @@ MODEL_SPEC = spec.ModelSpec(
             units=u.none,
             projected=None
         ),
-        spec.PROJECTED_WATERSHED_VECTOR.model_copy(update={
-            'is_aoi': True
-        }),
+        spec.PROJECTED_WATERSHED_VECTOR,
         spec.CSVInput(
             id="biophysical_table_path",
             name=gettext("biophysical table"),

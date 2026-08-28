@@ -168,6 +168,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["watersheds_path", "sub_watersheds_path"],
         ["demand_table_path", "valuation_table_path"]
     ],
+    aoi_input_id="watersheds_path",
     validate_spatial_overlap=True,
     different_projections_ok=False,
     aliases=("hwy", "awy"),
@@ -237,8 +238,7 @@ MODEL_SPEC = spec.ModelSpec(
                     about=gettext("Unique identifier for each watershed.")
                 )
             ],
-            projected=True,
-            is_aoi=True
+            projected=True
         ),
         spec.VectorInput(
             id="sub_watersheds_path",

@@ -33,6 +33,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["landcover_raster_path", "landcover_biophysical_table_path"],
         ["guild_table_path", "farm_vector_path"]
     ],
+    aoi_input_id="farm_vector_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,
@@ -216,8 +217,7 @@ MODEL_SPEC = spec.ModelSpec(
                     units=None
                 )
             ],
-            projected=None,
-            is_aoi=True
+            projected=None
         )
     ],
     outputs=[

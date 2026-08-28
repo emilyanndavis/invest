@@ -57,6 +57,7 @@ MODEL_SPEC = spec.ModelSpec(
         ["flow_dir_algorithm", "threshold_flow_accumulation", "k_param",
          "sdr_max", "ic_0_param", "l_max"]
     ],
+    aoi_input_id="watersheds_path",
     inputs=[
         spec.WORKSPACE,
         spec.SUFFIX,
@@ -94,8 +95,7 @@ MODEL_SPEC = spec.ModelSpec(
                 "Map of the boundaries of the watershed(s) over which to aggregate"
                 " results. Each watershed should contribute to a point of interest where"
                 " water quality will be analyzed."
-            ),
-            is_aoi=True
+            )
         )),
         spec.CSVInput(
             id="biophysical_table_path",
