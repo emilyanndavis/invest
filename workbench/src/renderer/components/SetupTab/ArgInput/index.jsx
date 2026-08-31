@@ -160,7 +160,7 @@ export default function ArgInput({
   touched = false, isValid = undefined, validationMessage = '',
   updateArgValues, handleFocus, selectFile, enabled,
   dropdownOptions = undefined, inputDropHandler, scrollEventCount = 0,
-  aoiInputName, aoiIsValid, selectSearchResult,
+  aoiInputName, aoiIsValid, searchExtent, updateSearchExtent, selectSearchResult,
 }) {
   const uniqueId = useId();
   const inputRef = useRef();

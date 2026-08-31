@@ -7,6 +7,8 @@ from flask import Flask
 from flask import request
 from flask_cors import CORS
 import geometamaker
+import pygeoprocessing
+
 import natcap.invest
 from natcap.invest import cli
 from natcap.invest import datastack
@@ -309,4 +311,21 @@ def set_geometamaker_profile():
     return {
         'message': 'Metadata profile saved',
         'error': False
+    }
+
+
+@app.route(f'/{PREFIX}/get_vector_bounding_box', methods=['POST'])
+def get_vector_bounding_box():
+    """Get the bounding box of a given vector.
+
+    Body (JSON string): deserializes to a dict with key:
+        vector_path: path to AOI vector
+
+    """
+    payload = request.get_json()
+    vector_info = pygeoprocessing.get_vector_info(
+        payload['vector_path'])
+
+    return {
+        'vector_bbox': vector_info['bounding_box'],
     }

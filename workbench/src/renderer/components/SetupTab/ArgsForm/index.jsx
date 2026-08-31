@@ -6,6 +6,7 @@ import Form from 'react-bootstrap/Form';
 import ArgInput from '../ArgInput';
 import { ipcMainChannels } from '../../../../main/ipcMainChannels';
 import { withTranslation } from 'react-i18next';
+import { getVectorBoundingBox } from '../../../server_requests';
 
 const { getFilePath, ipcRenderer } = window.Workbench.electron;
 
@@ -28,6 +29,9 @@ class ArgsForm extends React.Component {
     this.dragLeaveHandler = this.dragLeaveHandler.bind(this);
     this.formRef = React.createRef(); // For dragging CSS
     this.dragDepth = 0; // To determine Form dragging CSS
+    this.state = {
+      searchExtent: [],
+    };
   }
 
   async onArchiveDragDrop(event) {
@@ -116,6 +120,31 @@ class ArgsForm extends React.Component {
     }
   }
 
+  cachedAoiPath = '';
+  updateSearchExtent = () => {
+    const { aoiInputId, argsValidation, argsValues } = this.props;
+    const aoiIsValid = argsValidation[aoiInputId]?.valid || false;
+    const aoiPath = argsValues[aoiInputId]?.value || '';
+    // Fetch AOI bounding box if we don't already have it
+    // (i.e., if aoiPath has changed since the last bounding box calculation).
+    if (aoiIsValid && aoiPath !== this.cachedAoiPath) {
+      // Clear extent to avoid displaying previous values while awaiting update.
+      this.setState({searchExtent: []});
+      // console.log(`AOI path changed. Fetching bounding box for file at ${aoiPath}`);
+      // @TODO: remove timeout when done testing loading state
+      setTimeout(() => {
+        getVectorBoundingBox(
+          { vector_path: aoiPath }
+        ).then(({ vector_bbox }) => {
+          this.setState({searchExtent: vector_bbox}, () => {
+            // console.log(`new searchExtent: ${this.state.searchExtent}`);
+          });
+          this.cachedAoiPath = aoiPath;
+        });
+      }, 350);
+    }
+  };
+
   selectSearchResult = (argkey, url) => {
     this.props.updateArgValues(argkey, url);
     this.props.updateArgTouched(argkey);
@@ -161,6 +190,8 @@ class ArgsForm extends React.Component {
             scrollEventCount={scrollEventCount}
             aoiInputName={argsSpec[aoiInputId]?.name || ''}
             aoiIsValid={argsValidation[aoiInputId]?.valid || false}
+            searchExtent={this.state.searchExtent}
+            updateSearchExtent={this.updateSearchExtent}
             selectSearchResult={this.selectSearchResult}
           />
         );

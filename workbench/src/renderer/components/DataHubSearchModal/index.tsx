@@ -221,6 +221,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
 interface IntroBodyProps {
   aoiInputName: string,
+  aoiIsValid: boolean,
   query: DataHubSearchQuery,
 }
 
@@ -234,6 +235,7 @@ function DataHubSearchIntroBody(props: IntroBodyProps) {
           {t(`Search the Natural Capital Alliance Data Hub for datasets you can
             use in InVEST without having to download them first.`)}
         </p>
+        {/* @TODO: add loading spinner if/when awaiting AOI validation status, AOI extent, and/or collection string. */}
       {
         aoiIsValid
         ? <DataHubSearchParams
