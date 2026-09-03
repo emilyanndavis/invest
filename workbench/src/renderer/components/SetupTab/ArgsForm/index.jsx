@@ -30,6 +30,8 @@ class ArgsForm extends React.Component {
     this.formRef = React.createRef(); // For dragging CSS
     this.dragDepth = 0; // To determine Form dragging CSS
     this.state = {
+      focusOnAoiRequested: false,
+      readyToFocusOnAoi: false,
       searchExtent: [],
     };
   }
@@ -136,7 +138,10 @@ class ArgsForm extends React.Component {
         getVectorBoundingBox(
           { vector_path: aoiPath }
         ).then(({ vector_bbox }) => {
-          this.setState({searchExtent: vector_bbox}, () => {
+          this.setState({
+            ...this.state,
+            searchExtent: vector_bbox
+          }, () => {
             // console.log(`new searchExtent: ${this.state.searchExtent}`);
           });
           this.cachedAoiPath = aoiPath;
@@ -149,6 +154,31 @@ class ArgsForm extends React.Component {
     this.props.updateArgValues(argkey, url);
     this.props.updateArgTouched(argkey);
     this.props.triggerScrollEvent();
+  };
+
+  requestFocusOnAoiInput = () => {
+    // console.log(`requestFocusOnAoiInput`);
+    this.setState({
+      ...this.state,
+      focusOnAoiRequested: true,
+    });
+  };
+
+  setReadyToFocusOnAoi = (newState) => {
+    // console.log(`setReadyToFocusOnAoi to ${newState}`);
+    this.setState({
+      ...this.state,
+      readyToFocusOnAoi: newState,
+    });
+  };
+
+  resetAoiFocusState = () => {
+    // console.log(`resetAoiFocusState`);
+    this.setState({
+      ...this.state,
+      focusOnAoiRequested: false,
+      readyToFocusOnAoi: false,
+    });
   };
 
   render() {
@@ -193,6 +223,10 @@ class ArgsForm extends React.Component {
             searchExtent={this.state.searchExtent}
             updateSearchExtent={this.updateSearchExtent}
             selectSearchResult={this.selectSearchResult}
+            requestFocusOnAoiInput={this.requestFocusOnAoiInput}
+            setReadyToFocusOnAoi={this.setReadyToFocusOnAoi}
+            resetAoiFocusState={this.resetAoiFocusState}
+            autoFocus={(argkey === aoiInputId) && this.state.readyToFocusOnAoi && this.state.focusOnAoiRequested}
           />
         );
       });

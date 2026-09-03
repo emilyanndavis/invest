@@ -25,6 +25,7 @@ interface DataHubSearchModalProps {
   aoiInputName: string,
   aoiIsValid: boolean,
   selectSearchResult: (url: string) => {},
+  requestFocusOnAoiInput: () => {},
 }
 
 interface SearchModalView {
@@ -44,6 +45,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     aoiInputName,
     aoiIsValid,
     selectSearchResult,
+    requestFocusOnAoiInput,
   } = props;
 
   const { t } = useTranslation();
@@ -69,9 +71,9 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     setSearching(true);
   };
 
-  const goToAoiField = () => {
+  const goToAoiInput = () => {
+    requestFocusOnAoiInput();
     close();
-    // @TODO: move focus to AOI field in setup form
   };
 
   const toggleExpandCard = (id: string) => {
@@ -201,8 +203,10 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
         <Modal.Footer>
           <DataHubSearchIntroFooter
             aoiIsValid={aoiIsValid}
+            aoiInputName={aoiInputName}
             search={search}
             close={close}
+            goToAoiInput={goToAoiInput}
           />
         </Modal.Footer>
       }
@@ -364,15 +368,24 @@ function DataHubSearchResultsBody(props: ResultsBodyProps) {
 }
 
 function DataHubSearchIntroFooter(
-  props: {aoiIsValid: boolean, search: () => void, close: () => void,}
+  props: {
+    aoiIsValid: boolean,
+    aoiInputName: string,
+    search: () => void,
+    close: () => void,
+    goToAoiInput: () => void,
+  }
 ) {
-  const { aoiIsValid, search, close } = props;
+  const { aoiIsValid, aoiInputName, search, close, goToAoiInput } = props;
   const { t } = useTranslation();
 
   return (
       aoiIsValid
       ? <Button onClick={search}>{t('Search')}</Button>
-      : <Button onClick={close}>{t('OK')}</Button>
+      : <>
+          <Button variant="outline-primary" onClick={close}>{t('OK')}</Button>
+          <Button onClick={goToAoiInput}>{t(`Go to ${aoiInputName} form field`)}</Button>
+        </>
   );
 }
 
