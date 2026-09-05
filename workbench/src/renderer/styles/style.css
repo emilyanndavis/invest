@@ -7,6 +7,7 @@
   --secondary-gray: #585858;
   --bootstrap-secondary-gray:#6c757d;
   --bootstrap-gray-100: #f8f9fa;
+  --bootstrap-gray-200: #e9ecef;
   --bootstrap-gray-300: #dee2e6;
   --lagunita-light: #009AB4; /* From Stanford brand guidelines. Suitable for non-text elements only. */
   --lagunita-light-opacity-50: #009AB480; /* Equivalent to Lagunita Light with 50% opacity (for Bootstrap-style focus indicators). */
@@ -952,6 +953,9 @@ code {
     }
 
     &.search-params {
+      background: var(--bootstrap-gray-200);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
       grid-template-columns: repeat(8, 1fr);
       dd {
         /* Width can be up to 7/8 of the line width (automatically shortened
@@ -1062,5 +1066,11 @@ code {
         }
       }
     }
+  }
+
+  .no-results-icon {
+    font-size: 6rem;
+    display: flex;
+    margin: 0 auto 2rem;
   }
 }

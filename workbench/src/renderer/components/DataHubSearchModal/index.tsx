@@ -1,15 +1,16 @@
-import { useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import Spinner from 'react-bootstrap/Spinner';
 import { useTranslation } from 'react-i18next';
+import { MdClose } from 'react-icons/md';
 import {
-  MdClose,
-  MdErrorOutline,
-  MdSearchOff,
-} from 'react-icons/md';
+  TbMapSearch,
+  TbZoomCancel,
+  TbZoomExclamation,
+} from 'react-icons/tb';
 
 import type { DataHubSearchResult } from './models';
 import { mockSearchResults } from './mockSearchResults';
@@ -26,11 +27,6 @@ interface DataHubSearchModalProps {
   aoiIsValid: boolean,
   selectSearchResult: (url: string) => {},
   requestFocusOnAoiInput: () => {},
-}
-
-interface SearchModalView {
-  title: string,
-  footer?: ReactElement,
 }
 
 const INTRO_STEP = 0;
@@ -51,7 +47,6 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   const { t } = useTranslation();
 
   const [step, setStep] = useState<number>(0);
-  const [view, setView] = useState<SearchModalView | null>(null);
   const [searching, setSearching] = useState<boolean>(false);
   const [numSearchResults, setNumSearchResults] = useState<number>(0);
   const [searchResults, setSearchResults] = useState<DataHubSearchResult[]>([]);
@@ -59,10 +54,18 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   const [cardsExpanded, setCardsExpanded] = useState<Map<string, boolean>>(new Map());
   const [searchError, setSearchError] = useState<boolean>(false);
 
+  const autoFocusRef: RefObject<any> = useRef(null);
+
   const nextStep = () => {
     // console.log(`nextStep called. current step: ${step}`);
     setStep(step + 1);
   };
+
+  useEffect(() => {
+    // Modal automatically receives focused upon opening.
+    // This re-focuses the modal when its content changes.
+    autoFocusRef.current?.dialog?.focus();
+  }, [step]);
 
   const search = () => {
     // console.log('searching...');
@@ -110,13 +113,6 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   };
 
   useEffect(() => {
-    // console.log(`step changed. new step: ${step}`);
-    if (views[step]) {
-      setView(views[step]);
-    }
-  }, [step]);
-
-  useEffect(() => {
     if (searching) {
       // @TODO: initiate search, then call nextStep on response
       const mockAsyncCall = setTimeout(() => {
@@ -137,32 +133,25 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     // console.log(`allExpanded is now ${allExpanded}`);
   }, [allExpanded]);
 
-  const introView: SearchModalView = {
-    title: t('Search the Data Hub'),
-  };
-  const searchingView: SearchModalView = {
-    title: t('Searching…'),
-  };
-  const resultsView: SearchModalView = {
-    title: t('Search Results'),
-  };
-
-  const views: SearchModalView[] = [
-    introView,
-    searchingView,
-    resultsView,
+  const introTitle = t('Search the Data Hub');
+  const searchingTitle = t('Searching…');
+  const resultsTitle = t('Search Results');
+  const titles = [
+    introTitle,
+    searchingTitle,
+    resultsTitle,
   ];
 
   return (
-    view &&
     <Modal
       show={show}
       onHide={close}
       scrollable
       contentClassName="search-modal"
+      ref={autoFocusRef}
     >
       <Modal.Header>
-        <Modal.Title as="h1" className="h4">{view.title}</Modal.Title>
+        <Modal.Title as="h1" className="h4">{titles[step]}</Modal.Title>
         <Button
           variant="secondary-outline"
           onClick={close}
@@ -250,7 +239,7 @@ function DataHubSearchIntroBody(props: IntroBodyProps) {
           />
         : <>
             <div className="search-error">
-              <MdSearchOff aria-label={t('Error')} className="error-icon" />
+              <TbZoomCancel aria-label={t('Error')} className="error-icon" />
               <span>
                 {t(`Before searching, you must specify a valid path for the following input:`)}
                 <strong className="aoi-input-name">{aoiInputName}</strong>
@@ -267,9 +256,7 @@ function DataHubSearchSearchingBody() {
 
   return (
     <>
-      <Spinner animation="border" role="status" className="search-spinner">
-        <span className="visually-hidden">{t('Searching')}</span>
-      </Spinner>
+      <Spinner animation="border" role="status" className="search-spinner"></Spinner>
     </>
   );
 }
@@ -303,7 +290,7 @@ function DataHubSearchResultsBody(props: ResultsBodyProps) {
         searchError
         ? <>
             <div className="search-error">
-              <MdErrorOutline aria-label={t('Error')} className="error-icon" />
+              <TbZoomExclamation aria-label={t('Error')} className="error-icon" />
               <span>
                 {t(`An error occurred. Please check your internet connection, then try again.
                   If the problem persists, consider reporting it on the NatCap Community Forum.`)}
@@ -335,7 +322,7 @@ function DataHubSearchResultsBody(props: ResultsBodyProps) {
                     <DataHubSearchResultCard
                       key={result.id}
                       datasetDetails={result}
-                      expanded={cardsExpanded.get(result.id) as boolean}
+                      expanded={cardsExpanded.get(result.id) ? true : false}
                       onToggleExpanded={() => toggleExpandCard(result.id)}
                       onSelect={selectDataset}
                     />
@@ -344,6 +331,7 @@ function DataHubSearchResultsBody(props: ResultsBodyProps) {
               </>
             : <>
                 <p>{t('No results found.')}</p>
+                <TbMapSearch className="no-results-icon" aria-hidden="true" />
                 <p>
                   {t(`We are actively working on adding more datasets to the Data Hub
                   to meet the needs of InVEST users. Please check back later as the
