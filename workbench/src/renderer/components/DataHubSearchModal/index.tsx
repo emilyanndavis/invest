@@ -57,7 +57,6 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   const autoFocusRef: RefObject<any> = useRef(null);
 
   const nextStep = () => {
-    // console.log(`nextStep called. current step: ${step}`);
     setStep(step + 1);
   };
 
@@ -68,7 +67,6 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   }, [step]);
 
   const search = () => {
-    // console.log('searching...');
     setStep(SEARCHING_STEP);
     setSearchError(false);
     setSearching(true);
@@ -81,23 +79,19 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
   const toggleExpandCard = (id: string) => {
     const prevState = cardsExpanded.get(id);
-    // console.log(`toggleExpandCard for id ${id} from ${prevState} to ${!prevState}`);
     setCardsExpanded(new Map([...cardsExpanded, [id, !prevState]]));
   };
 
   const toggleExpandAll = (event: ChangeEvent) => {
     const checkbox = event.target as HTMLInputElement;
-    // console.log(`expand all? ${checkbox.checked}`);
     setAllExpanded(checkbox.checked);
   };
 
   const expandAllCards = () => {
-    // console.log('expand all cards');
     setCardsExpanded(new Map(searchResults.map(({id}) => [id, true])));
   };
 
   const collapseAllCards = () => {
-    // console.log('collapse all cards');
     setCardsExpanded(new Map(searchResults.map(({id}) => [id, false])));
   };
 
@@ -107,7 +101,10 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   };
 
   const close = () => {
-    setStep(0); // Save state or reset?
+    // Setting step to 0 "resets" modal state each time it closes.
+    // @TODO: ¿consider preserving step number to prevent repeated user interactions,
+    // perhaps resetting step number only if/when query params have changed?
+    setStep(0);
     setSearching(false);
     closeModal();
   };
@@ -130,7 +127,6 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
   useEffect(() => {
     allExpanded ? expandAllCards() : collapseAllCards();
-    // console.log(`allExpanded is now ${allExpanded}`);
   }, [allExpanded]);
 
   const introTitle = t('Search the Data Hub');
