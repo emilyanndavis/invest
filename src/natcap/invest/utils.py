@@ -1087,22 +1087,12 @@ def get_raster_or_vector_projection(filepath):
         filepath (String): a path to a GDAL vector or raster. Paths may use any
             GDAL-supported scheme, including virtual file system /vsi schemes.
 
-    Raises:
-        ValueError
-            if ``filepath`` is not a file or cannot be opened as a
-            ``gdal.OF_RASTER`` or `gdal.OF_VECTOR``.
     Returns:
         projection_wkt (string): projection of the vector or raster in Well
           Known Text.
     """
     gis_type = pygeoprocessing.get_gis_type(filepath)
-    if gis_type == pygeoprocessing.RASTER_TYPE:
-        target_projection_wkt = pygeoprocessing.get_raster_info(
-            filepath)['projection_wkt']
-    elif gis_type == pygeoprocessing.VECTOR_TYPE:
-        target_projection_wkt = pygeoprocessing.get_vector_info(
-            filepath)['projection_wkt']
-    else:
-        raise ValueError(f"{filepath} must be a GDAL vector or raster.")
-
-    return target_projection_wkt
+    # handle a file with gis_type = 3
+    if gis_type & pygeoprocessing.RASTER_TYPE:
+        return pygeoprocessing.get_raster_info(filepath)['projection_wkt']
+    return pygeoprocessing.get_vector_info(filepath)['projection_wkt']
