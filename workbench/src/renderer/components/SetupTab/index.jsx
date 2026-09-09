@@ -600,8 +600,6 @@ class SetupTab extends React.Component {
         userguide,
         isCoreModel,
         inputFieldOrder,
-        defaultProjectionId,
-        defaultPixelsizeId,
         sidebarSetupElementId,
         sidebarFooterElementId,
         executeClicked,
@@ -658,8 +656,6 @@ class SetupTab extends React.Component {
               argsEnabled={argsEnabled}
               argsDropdownOptions={argsDropdownOptions}
               argsOrder={inputFieldOrder}
-              defaultProjectionId={defaultProjectionId}
-              defaultPixelsizeId={defaultPixelsizeId}
               userguide={userguide}
               isCoreModel={isCoreModel}
               updateArgValues={this.updateArgValues}

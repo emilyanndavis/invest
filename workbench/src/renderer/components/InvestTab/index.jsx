@@ -325,8 +325,8 @@ class InvestTab extends React.Component {
                     modelID={modelID}
                     argsSpec={argsSpec}
                     inputFieldOrder={modelSpec.input_field_order}
-                    defaultProjectionId={modelSpec.defaultProjectionId}
-                    defaultPixelsizeId={modelSpec.defaultPixelsizeId}
+                    defaultProjectionId={modelSpec.default_projection_id}
+                    defaultPixelsizeId={modelSpec.default_pixelsize_id}
                     argsInitValues={argsValues}
                     investExecute={this.investExecute}
                     sidebarSetupElementId={sidebarSetupElementId}
