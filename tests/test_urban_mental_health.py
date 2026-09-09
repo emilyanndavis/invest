@@ -1071,7 +1071,7 @@ class UMHTests(unittest.TestCase):
 
         args = make_synthetic_data_and_params(self.workspace_dir, 'lulc')
 
-        # create NDVI base with no nodata value set
+        # create LULC base with no nodata value set
         lulc_base_array = numpy.ones((3, 3))
 
         srs = osr.SpatialReference()
@@ -1134,7 +1134,7 @@ class UMHTests(unittest.TestCase):
             args['ndvi_base'],
             target_projection_wkt=expected_projection_wkt)
 
-        # assert that outputs are in the same projection as ndvi
+        # assert that outputs are in the same projection as AOI
         actual_projection = pygeoprocessing.get_raster_info(
             file_reg['preventable_cases'])['projection_wkt']
         actual_pixelsize = pygeoprocessing.get_raster_info(
