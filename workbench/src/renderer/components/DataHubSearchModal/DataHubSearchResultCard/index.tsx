@@ -9,7 +9,7 @@ interface DataHubSearchResultCardProps {
   datasetDetails: DataHubSearchResult,
   expanded: boolean,
   onToggleExpanded: () => void,
-  onSelect: (url: string) => void,
+  onSelect: (url: string, collections: string[]) => void,
 }
 
 export default function DataHubSearchResultCard(
@@ -25,12 +25,16 @@ export default function DataHubSearchResultCard(
   const { t } = useTranslation();
 
   const {
-    id, title, description, tags, places, license,
+    id, title, description, tags, places, collections, license,
     author, lastUpdated, created, datasetUrl, webpageUrl
   } = datasetDetails;
 
-  const descriptionPreview = description.slice(0, 430) + '…';
-  // const shortDescriptionPreview = description.slice(0, 170) + '…';
+  const descriptionPreviewLength = 430;
+  const descriptionPreview = (
+    description.length > descriptionPreviewLength
+    ? (description.slice(0, descriptionPreviewLength) + '…')
+    : description
+  );
 
   return (
     <div className={`search-result ${expanded ? 'search-result-expanded' : ''}`}>
@@ -49,7 +53,7 @@ export default function DataHubSearchResultCard(
             {t('Details')}
           </Button>
           <Button
-            onClick={() => onSelect(datasetUrl)}
+            onClick={() => onSelect(datasetUrl, collections)}
             aria-describedby={`${id}-title`}
           >
             {t('Select')}
@@ -72,9 +76,9 @@ export default function DataHubSearchResultCard(
             <dt>{t('Author')}</dt>
             <dd>{author}</dd>
             <dt>{t('Last Updated')}</dt>
-            <dd>{lastUpdated.toString()}</dd>
+            <dd>{lastUpdated}</dd>
             <dt>{t('Created')}</dt>
-            <dd>{created.toString()}</dd>
+            <dd>{created}</dd>
             <dt>{t('Full Details and Preview')}</dt>
             <dd>
               <a

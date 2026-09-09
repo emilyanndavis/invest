@@ -19,11 +19,12 @@ export default function DataHubSearchParams(query: DataHubSearchQuery) {
         </>
       }
       {
-        query.collection &&
-        <>
-          <dt>{t('Collection')}</dt>
-          <dd>{query.collection}</dd>
-        </>
+        query.collections.length > 0
+        ? <>
+            <dt>{t('Collections')}</dt>
+            <dd>{query.collections.join(', ')}</dd>
+          </>
+        : <></>
       }
     </dl>
   );

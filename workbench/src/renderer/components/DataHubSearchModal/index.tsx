@@ -25,7 +25,7 @@ interface DataHubSearchModalProps {
   query: DataHubSearchQuery,
   aoiInputName: string,
   aoiIsValid: boolean,
-  selectSearchResult: (url: string) => {},
+  selectSearchResult: (url: string, collections: string[]) => {},
   requestFocusOnAoiInput: () => {},
 }
 
@@ -95,8 +95,8 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     setCardsExpanded(new Map(searchResults.map(({id}) => [id, false])));
   };
 
-  const selectDataset = (url: string) => {
-    selectSearchResult(url);
+  const selectDataset = (url: string, collections: string[]) => {
+    selectSearchResult(url, collections);
     close();
   };
 
@@ -115,7 +115,8 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
       const mockAsyncCall = setTimeout(() => {
         setNumSearchResults(mockSearchResults.length);
         // setNumSearchResults(0); // uncomment to test "no results" state
-        setSearchResults(mockSearchResults);
+        // setSearchResults(mockSearchResults);
+        setSearchResults(mockSearchResults.filter(result => query.collections.length ? (result.collections[0] === query.collections[0]) : result));  // mock collection filtering
         collapseAllCards();
         // setSearchError(true); // uncomment to test error state
         setSearching(false);
@@ -231,7 +232,7 @@ function DataHubSearchIntroBody(props: IntroBodyProps) {
             tags={query.tags}
             datatype={query.datatype}
             extent={query.extent}
-            collection={query.collection}
+            collections={query.collections}
           />
         : <>
             <div className="search-error">
@@ -265,7 +266,7 @@ interface ResultsBodyProps {
   toggleExpandCard: (id: string) => void,
   toggleExpandAll: (event: ChangeEvent) => void,
   cardsExpanded: Map<string, boolean>,
-  selectDataset: (url: string) => void,
+  selectDataset: (url: string, collections: string[]) => void,
 }
 
 function DataHubSearchResultsBody(props: ResultsBodyProps) {
@@ -280,7 +281,7 @@ function DataHubSearchResultsBody(props: ResultsBodyProps) {
         tags={query.tags}
         datatype={query.datatype}
         extent={query.extent}
-        collection={query.collection}
+        collections={query.collections}
       />
       {
         searchError

@@ -7,6 +7,7 @@ import ArgInput from '../ArgInput';
 import { ipcMainChannels } from '../../../../main/ipcMainChannels';
 import { withTranslation } from 'react-i18next';
 import { getVectorBoundingBox } from '../../../server_requests';
+import { DataHubSearchSiblingType } from '../../DataHubSearchModal/models';
 
 const { getFilePath, ipcRenderer } = window.Workbench.electron;
 
@@ -33,6 +34,10 @@ class ArgsForm extends React.Component {
       focusOnAoiRequested: false,
       readyToFocusOnAoi: false,
       searchExtent: [],
+      searchCollections: {
+        [DataHubSearchSiblingType.LULC]: [],
+        [DataHubSearchSiblingType.BIOPHYSICAL_TABLE]: [],
+      },
     };
   }
 
@@ -150,14 +155,25 @@ class ArgsForm extends React.Component {
     }
   };
 
-  selectSearchResult = (argkey, url) => {
+  selectSearchResult = (argkey, url, collections, siblingType) => {
     this.props.updateArgValues(argkey, url);
     this.props.updateArgTouched(argkey);
     this.props.triggerScrollEvent();
+    if (
+      siblingType === DataHubSearchSiblingType.LULC
+      || siblingType === DataHubSearchSiblingType.BIOPHYSICAL_TABLE
+    ) {
+      this.setState({
+        ...this.state,
+        searchCollections: {
+          ...this.state.searchCollections,
+          [siblingType]: collections,
+        },
+      });
+    }
   };
 
   requestFocusOnAoiInput = () => {
-    // console.log(`requestFocusOnAoiInput`);
     this.setState({
       ...this.state,
       focusOnAoiRequested: true,
@@ -165,7 +181,6 @@ class ArgsForm extends React.Component {
   };
 
   setReadyToFocusOnAoi = (newState) => {
-    // console.log(`setReadyToFocusOnAoi to ${newState}`);
     this.setState({
       ...this.state,
       readyToFocusOnAoi: newState,
@@ -173,12 +188,43 @@ class ArgsForm extends React.Component {
   };
 
   resetAoiFocusState = () => {
-    // console.log(`resetAoiFocusState`);
     this.setState({
       ...this.state,
       focusOnAoiRequested: false,
       readyToFocusOnAoi: false,
     });
+  };
+
+  getSiblingType = (argkey) => {
+    // These hard-coded values support AWY, NDR, and SDR.
+    // @TODO: add support for all search-enabled models (via model spec, probably).
+    if (argkey === 'lulc_path') {
+      return DataHubSearchSiblingType.LULC;
+    } else if (argkey === 'biophysical_table_path') {
+      return DataHubSearchSiblingType.BIOPHYSICAL_TABLE;
+    }
+    return DataHubSearchSiblingType.NONE;
+  };
+
+  getSiblingCollections = (siblingType) => {
+    if (siblingType === DataHubSearchSiblingType.LULC) {
+      return this.state.searchCollections[DataHubSearchSiblingType.BIOPHYSICAL_TABLE];
+    } else if (siblingType === DataHubSearchSiblingType.BIOPHYSICAL_TABLE) {
+      return this.state.searchCollections[DataHubSearchSiblingType.LULC];
+    }
+    return [];
+  };
+
+  clearSearchCollections = (siblingType) => {
+    if (siblingType === DataHubSearchSiblingType.LULC || siblingType === DataHubSearchSiblingType.BIOPHYSICAL_TABLE) {
+      this.setState({
+        ...this.state,
+        searchCollections: {
+          ...this.state.searchCollections,
+          [siblingType]: [],
+        },
+      });
+    }
   };
 
   render() {
@@ -200,6 +246,8 @@ class ArgsForm extends React.Component {
       k += 1;
       const groupItems = [];
       groupArray.forEach((argkey) => {
+        const siblingType = this.getSiblingType(argkey);
+        const siblingCollections = this.getSiblingCollections(siblingType);
         groupItems.push(
           <ArgInput
             argkey={argkey}
@@ -222,6 +270,9 @@ class ArgsForm extends React.Component {
             aoiIsValid={argsValidation[aoiInputId]?.valid || false}
             searchExtent={this.state.searchExtent}
             updateSearchExtent={this.updateSearchExtent}
+            searchCollections={siblingCollections}
+            clearSearchCollections={this.clearSearchCollections}
+            searchSiblingType={siblingType}
             selectSearchResult={this.selectSearchResult}
             requestFocusOnAoiInput={this.requestFocusOnAoiInput}
             setReadyToFocusOnAoi={this.setReadyToFocusOnAoi}

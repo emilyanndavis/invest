@@ -160,7 +160,8 @@ export default function ArgInput({
   touched = false, isValid = undefined, validationMessage = '',
   updateArgValues, handleFocus, selectFile, enabled,
   dropdownOptions = undefined, inputDropHandler, scrollEventCount = 0,
-  aoiInputName, aoiIsValid, searchExtent, updateSearchExtent, selectSearchResult,
+  aoiInputName, aoiIsValid, searchExtent, updateSearchExtent,
+  searchCollections, clearSearchCollections, searchSiblingType, selectSearchResult,
   requestFocusOnAoiInput, setReadyToFocusOnAoi, resetAoiFocusState, autoFocus,
 }) {
   const uniqueId = useId();
@@ -183,6 +184,7 @@ export default function ArgInput({
     /** Pass input value up to SetupTab for storage & validation. */
     const { name, value } = event.currentTarget;
     updateArgValues(name, value);
+    clearSearchCollections(searchSiblingType);
   }
 
   // Messages with this pattern include validation feedback about
@@ -243,7 +245,7 @@ export default function ArgInput({
     tags: argSpec.keywords || [],
     datatype: argSpec.type,
     extent: searchExtent,
-    collection: null, // @TODO: update when relevant
+    collections: searchCollections,
   };
 
   const openSearch = () => {
@@ -268,6 +270,10 @@ export default function ArgInput({
     resetAoiFocusState();
   }
 
+  const onSelectSearchResult = (argkey, url, collections) => {
+    selectSearchResult(argkey, url, collections, searchSiblingType);
+  };
+
   let searchButton = <React.Fragment />;
   // @TODO: refine this condition if needed (e.g., should any input w/o keywords be skipped?)
   if (isCoreModel && aoiInputName && aoiInputName !== argSpec.name
@@ -291,8 +297,8 @@ export default function ArgInput({
           query={searchQuery}
           aoiInputName={aoiInputName}
           aoiIsValid={aoiIsValid}
-          selectSearchResult={(url) => selectSearchResult(argkey, url)}
           requestFocusOnAoiInput={requestFocusOnAoiInput}
+          selectSearchResult={(url, collections) => onSelectSearchResult(argkey, url, collections)}
         />
       </>
     );
