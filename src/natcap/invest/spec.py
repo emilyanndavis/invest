@@ -202,7 +202,7 @@ def _get_projection_inputs_options(args, model_spec):
                 try:
                     srs = osr.SpatialReference()
                     srs.ImportFromWkt(utils.get_raster_or_vector_projection(args[inp.id]))
-                except ValueError:  # raised if invalid filepath
+                except (RuntimeError, ValueError):  # raised if invalid filepath
                     srs = None
                 if srs:
                     display_name += f" ({srs.GetName()})"
@@ -214,7 +214,7 @@ def _get_projection_inputs_options(args, model_spec):
     return options
 
 
-def _get_pixel_size_options(args, model_spec, default_pixelsize_id=None):
+def _get_pixel_size_options(args, model_spec, default_id=None):
     """Return spatial inputs and pixel size as dropdown Options, default first
 
     Pixel size units match the units specified in the current
@@ -223,9 +223,9 @@ def _get_pixel_size_options(args, model_spec, default_pixelsize_id=None):
     Args:
         args (dict): model arguments
         model_spec (ModelSpec): model specification
-        default_pixelsize_id (str): Optional input ID to label as the default.
-            When ``None``, the input arg specified by ``default_pixelsize_id``
-            is used.
+        default_id (str): Optional input ID to label as the default.
+            When ``None``, the input arg specified by
+            ``ModelSpec.default_pixelsize_id`` is used.
 
     Returns:
         list of options for pixel size where key is the input's ID
@@ -249,41 +249,40 @@ def _get_pixel_size_options(args, model_spec, default_pixelsize_id=None):
                 projection_units = projection_units.replace("metre", "meter")  # GDAL uses "metre"
             else:
                 projection_units = srs.GetAngularUnitsName()
-        except ValueError:
+        except (RuntimeError, ValueError):
             # raised if current_projection_wkt is unprojected
             current_projection_wkt = None
 
     default_pixelsize_input = model_spec.get_default_pixelsize_input()
-    if default_pixelsize_id is None and default_pixelsize_input:
-        default_pixelsize_id = default_pixelsize_input.id
+    if default_id is None and default_pixelsize_input:
+        default_id = default_pixelsize_input.id
 
     options = []
     for inp in model_spec.inputs:
         if not isinstance(inp, (SingleBandRasterInput, RasterInput)):
             continue
-        if inp.id == default_pixelsize_id:
+        if inp.id == default_id:
             display_name = f"(Default) {inp.name}"
         else:
             display_name = inp.name
+        formatted_pixelsize = ''
         if current_projection_wkt and args.get(inp.id):
             # convert pixel size to be in same units as selected target projection
             try:
                 pixelsize = utils.get_raster_pixel_size_in_target_proj_units(
                     args[inp.id], current_projection_wkt)
-                formatted_pixelsize = f" ({round(pixelsize[0], 3)}, "\
-                    f"{round(abs(pixelsize[1]), 3)} {projection_units})"
-            except ValueError:  # raised if current_projection_wkt is unprojected
-                formatted_pixelsize = ''
-            except RuntimeError:
-                formatted_pixelsize = ''
-        else:
-            formatted_pixelsize = ''
+                formatted_pixelsize = f" ({pixelsize[0]:.{3}g}, "\
+                    f"{abs(pixelsize[1]):.{3}g} {projection_units})"
+            except (RuntimeError, ValueError):  # raised if current_projection_wkt is unprojected
+                pass
 
         display_name += f"{formatted_pixelsize}"
         options.append(Option(key=inp.id, display_name=display_name))
 
-    options.sort(key=lambda x: x.key != default_pixelsize_id)
+    options.sort(key=lambda x: x.key != default_id)
     return options
+
+
 def set_metadata_field_descriptions(field_specs, resource):
     """Set field or column descriptions on a geometamaker resource.
 
@@ -496,6 +495,7 @@ class Input(IOModel):
     def validate_with_context(self, value, args, model_spec):
         """Validate this value using other model arguments."""
         return None
+
     def archive_for_datastack(self, value, datastack):
         """Archive a given value of this input into a datastack.
 
@@ -2176,9 +2176,9 @@ class OptionSpatialInput(OptionStringInput):
 
         filepath = args.get(value)
         if not filepath:
-            return f"Source dataset: {selected_spec.name} is missing"
+            return validation_messages.MISSING_SOURCE_DATA.format(
+                dataset_name=selected_spec.name)
 
-        filepath = args.get(value)
         projection_spec = selected_spec.model_copy(update={
             'projected': self.projected,
             'projection_units': self.projection_units,
@@ -2552,11 +2552,11 @@ class ModelSpec(ImmutableBaseModel):
             try:
                 projection_input = self.get_input(self.default_projection_id)
             except KeyError:
-                raise KeyError(
+                raise ValueError(
                     'Invalid default_projection_id. No input with id '
                     f'"{self.default_projection_id}"')
             if not isinstance(projection_input, SpatialFileInput):
-                raise TypeError(
+                raise ValueError(
                     'Invalid default_projection_id. Input with id '
                     f'"{self.default_projection_id}" is not a spatial input')
         return self
@@ -2568,12 +2568,12 @@ class ModelSpec(ImmutableBaseModel):
             try:
                 pixelsize_input = self.get_input(self.default_pixelsize_id)
             except KeyError:
-                raise KeyError(
+                raise ValueError(
                     'Invalid default_pixelsize_id. No input with id '
                     f'"{self.default_pixelsize_id}"')
             if not isinstance(pixelsize_input, (RasterInput,
                                                 SingleBandRasterInput)):
-                raise TypeError(
+                raise ValueError(
                     'Invalid default_pixelsize_id. Input with id '
                     f'"{self.default_pixelsize_id}" is not a raster input')
         return self

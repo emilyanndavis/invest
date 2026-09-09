@@ -35,7 +35,7 @@ def _get_pixelsize_umh(args, model_spec):
 
     default_for_model_option = get_default_pixelsize_id(args['model_option'])
     return spec._get_pixel_size_options(
-        args, model_spec, default_pixelsize_id=default_for_model_option)
+        args, model_spec, default_id=default_for_model_option)
 
 
 _model_description = gettext(

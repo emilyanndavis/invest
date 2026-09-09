@@ -90,7 +90,7 @@ class SpecUtilsUnitTests(unittest.TestCase):
         self.assertEqual(
             '(Default) land use/land cover (NAD83 / UTM zone 10N)',
             lulc_prj_option.display_name)
-        self.assertEqual('precipitation (1.0, 1.0 meter)',
+        self.assertEqual('precipitation (1, 1 meter)',
                          precip_pixelsize_option.display_name)
 
         # Simulate user deleting one character from the filepath
