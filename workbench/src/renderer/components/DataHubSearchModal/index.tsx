@@ -12,11 +12,10 @@ import {
   TbZoomExclamation,
 } from 'react-icons/tb';
 
-import type { DataHubSearchResult } from './models';
-import { mockSearchResults } from './mockSearchResults';
+import { transformDHALSearchResult, type DataHubSearchResult, type DHALDataset } from './models';
 import DataHubSearchResultCard from './DataHubSearchResultCard';
 import DataHubSearchParams from './DataHubSearchParams';
-import type { DataHubSearchQuery } from './DataHubSearchParams/models';
+import { DHALSearchParams, type DataHubSearchQuery } from './DataHubSearchParams/models';
 import { openLinkInBrowser } from '../../utils';
 
 interface DataHubSearchModalProps {
@@ -28,6 +27,9 @@ interface DataHubSearchModalProps {
   selectSearchResult: (url: string, collections: string[]) => {},
   requestFocusOnAoiInput: () => {},
 }
+
+const DHAL_BASE_URL = 'https://data.naturalcapitalalliance.stanford.edu/dhal/search_dataset/';
+// const DHAL_BASE_URL = 'http://127.0.0.1:8000/search_dataset/';
 
 const INTRO_STEP = 0;
 const SEARCHING_STEP = 1;
@@ -111,18 +113,20 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
   useEffect(() => {
     if (searching) {
-      // @TODO: initiate search, then call nextStep on response
-      const mockAsyncCall = setTimeout(() => {
-        setNumSearchResults(mockSearchResults.length);
-        // setNumSearchResults(0); // uncomment to test "no results" state
-        // setSearchResults(mockSearchResults);
-        setSearchResults(mockSearchResults.filter(result => query.collections.length ? (result.collections[0] === query.collections[0]) : result));  // mock collection filtering
-        collapseAllCards();
-        // setSearchError(true); // uncomment to test error state
-        setSearching(false);
-        nextStep();
-      }, 350);
-      return () => clearTimeout(mockAsyncCall);
+      const params = new DHALSearchParams(query);
+      fetch(`${DHAL_BASE_URL}?${params}`)
+        .then((response) => response.json())
+        .then(({ count, datasets }) => {
+          setNumSearchResults(count);
+          setSearchResults(datasets.map((d: DHALDataset) => transformDHALSearchResult(d)));
+          collapseAllCards();
+          setSearching(false);
+        })
+        .catch((error) => {
+          setSearchError(true);
+          console.error(error.stack);
+        })
+        .finally(() => nextStep())
     }
   }, [searching]);
 

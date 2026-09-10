@@ -6,6 +6,8 @@ import logging
 from flask import Flask
 from flask import request
 from flask_cors import CORS
+from osgeo import osr
+
 import geometamaker
 import pygeoprocessing
 
@@ -325,7 +327,13 @@ def get_vector_bounding_box():
     payload = request.get_json()
     vector_info = pygeoprocessing.get_vector_info(
         payload['vector_path'])
+    # Convert to WGS84 because that's what the DHAL expects.
+    wgs84srs = osr.SpatialReference()
+    wgs84srs.ImportFromEPSG(4326)  # EPSG4326 is WGS84 lat/lng
+    vector_wgs84_bounding_box = pygeoprocessing.transform_bounding_box(
+        vector_info['bounding_box'], vector_info['projection_wkt'],
+        wgs84srs.ExportToWkt())
 
     return {
-        'vector_bbox': vector_info['bounding_box'],
+        'vector_bbox': vector_wgs84_bounding_box,
     }
