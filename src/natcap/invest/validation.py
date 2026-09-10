@@ -171,6 +171,14 @@ def validate(args, model_spec):
 
     """
     validation_warnings = []
+    # if no static default pixel size, set value dynamically via dropdown func
+    if ('target_pixelsize_id' in args and not args['target_pixelsize_id']
+            and not model_spec.default_pixelsize_id):
+        pixelsize_spec = model_spec.get_input('target_pixelsize_id')
+        options = pixelsize_spec.dropdown_function(
+            args, model_spec)
+        if options:
+            args['target_pixelsize_id'] = options[0].key
 
     # Phase 1: Check whether an input is required and has a value
     missing_keys = set()

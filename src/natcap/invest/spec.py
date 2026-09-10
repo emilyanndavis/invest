@@ -2167,7 +2167,7 @@ class OptionSpatialInput(OptionStringInput):
 
     def validate_with_context(self, value, args, model_spec):
         if not value:
-            return None
+            return validation_messages.MISSING_VALUE
 
         try:
             selected_spec = model_spec.get_input(value)
