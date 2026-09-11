@@ -71,6 +71,13 @@ export default function DataHubSearchResultCard(
             <dd>{tags.join(', ')}</dd>
             <dt>{t('Places')}</dt>
             <dd>{places.join(', ')}</dd>
+            {
+              collections.length > 0 &&
+              <>
+                <dt>{t('Collections')}</dt>
+                <dd>{collections.join(', ')}</dd>
+              </>
+            }
             <dt>{t('License')}</dt>
             <dd>{license}</dd>
             <dt>{t('Author')}</dt>
