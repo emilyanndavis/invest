@@ -171,6 +171,14 @@ def validate(args, model_spec):
 
     """
     validation_warnings = []
+    # if no static default pixel size, set value dynamically via dropdown func
+    if ('target_pixelsize_id' in args and not args['target_pixelsize_id']
+            and not model_spec.default_pixelsize_id):
+        pixelsize_spec = model_spec.get_input('target_pixelsize_id')
+        options = pixelsize_spec.dropdown_function(
+            args, model_spec)
+        if options:
+            args['target_pixelsize_id'] = options[0].key
 
     # Phase 1: Check whether an input is required and has a value
     missing_keys = set()
@@ -238,6 +246,12 @@ def validate(args, model_spec):
                                 nested_spec.required, expression_values)))
         try:
             warning_msg = parameter_spec.validate(args[key])
+            if not warning_msg:
+                warning_msg = parameter_spec.validate_with_context(
+                    args[key],
+                    args,
+                    model_spec,
+                )
             if warning_msg:
                 validation_warnings.append(([key], warning_msg))
                 invalid_keys.add(key)
@@ -358,6 +372,12 @@ def invest_validator(validate_func):
             # need to validate it.
             if args_value not in ('', None):
                 error_msg = args_key_spec.validate(args_value)
+                if error_msg is None:
+                    error_msg = args_key_spec.validate_with_context(
+                        args_value,
+                        args,
+                        model_module.MODEL_SPEC,
+                    )
 
             if error_msg is None:
                 warnings_ = []
