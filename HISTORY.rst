@@ -63,8 +63,22 @@
 
 
 
-Unreleased Changes
-------------------
+..
+  Unreleased Changes
+  ------------------
+
+3.20.2 (2026-09-02)
+-------------------
+
+General
+=======
+* Fixed a bug that prevented non-spatial files referenced in CSVs from being
+  added to datastack archives. Refactored some datastack creation logic into
+  class methods on input and output specs.
+  (`#2589 <https://github.com/natcap/invest/issues/2589>`_)
+* Fixed a bug where an error state while reading a remote GDAL dataset
+  could result in a deadlock during invest validation.
+  (`#2724 <https://github.com/natcap/invest/issues/2724>`_)
 
 Wind Energy
 ===========
