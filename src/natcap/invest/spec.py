@@ -8,6 +8,7 @@ import os
 import pprint
 import queue
 import re
+import shutil
 import threading
 import types
 import typing
@@ -128,16 +129,14 @@ def _check_projection(srs, projected, projection_units):
 
     Returns:
         A string error message if an error was found. ``None`` otherwise.
-
     """
     with GDALUseExceptions():
         empty_srs = osr.SpatialReference()
         if srs is None or srs.IsSame(empty_srs):
             return validation_messages.INVALID_PROJECTION
 
-        if projected:
-            if not srs.IsProjected():
-                return validation_messages.NOT_PROJECTED
+        if projected and not srs.IsProjected():
+            return validation_messages.NOT_PROJECTED
 
         if projection_units:
             # pint uses underscores in multi-word units e.g. 'survey_foot'
@@ -181,19 +180,211 @@ def validate_permissions_string(permissions):
     return permissions
 
 
+def _get_projection_inputs_options(args, model_spec):
+    """Return spatial inputs and prj as dropdown Options, default first.
+
+    Args:
+        args (dict): input arguments for InVEST model
+        model_spec (ModelSpec): model specification
+
+    Returns:
+        list of options for spatial inputs to model where key is the input's ID
+    """
+    default_projection_input = model_spec.get_default_projection_input()
+
+    options = []
+    for inp in model_spec.inputs:
+        if (isinstance(inp, SpatialFileInput)):
+            if inp is default_projection_input:
+                display_name = f"(Default) {inp.name}"
+            else:
+                display_name = inp.name
+            if args.get(inp.id):
+                try:
+                    srs = osr.SpatialReference()
+                    srs.ImportFromWkt(utils.get_raster_or_vector_projection(args[inp.id]))
+                except (RuntimeError, ValueError):  # raised if invalid filepath
+                    srs = None
+                if srs:
+                    display_name += f" ({srs.GetName()})"
+            options.append(Option(key=inp.id, display_name=display_name))
+
+    # sort so default is first
+    if default_projection_input:
+        options.sort(key=lambda x: x.key != default_projection_input.id)
+    return options
+
+
+def _get_pixel_size_options(args, model_spec, default_id=None):
+    """Return spatial inputs and pixel size as dropdown Options, default first
+
+    Pixel size units match the units specified in the current
+    ``target_projection_id`` input's projection
+
+    Args:
+        args (dict): model arguments
+        model_spec (ModelSpec): model specification
+        default_id (str): Optional input ID to label as the default.
+            When ``None``, the input arg specified by
+            ``ModelSpec.default_pixelsize_id`` is used.
+
+    Returns:
+        list of options for pixel size where key is the input's ID
+    """
+    # Find the selected target projection so that pixel sizes can be
+    # transformed to the target projection's units
+    projection_input_id = args.get("target_projection_id")
+    if not projection_input_id:
+        projection_input_id = model_spec.get_default_projection_input().id
+    current_projection_wkt = None
+    projection_units = None
+    if projection_input_id and args.get(projection_input_id):
+        try:
+            current_projection_wkt = utils.get_raster_or_vector_projection(
+                args[projection_input_id])
+            srs = osr.SpatialReference()
+            srs.ImportFromWkt(current_projection_wkt)
+
+            if srs.IsProjected():
+                projection_units = srs.GetLinearUnitsName()
+                projection_units = projection_units.replace("metre", "meter")  # GDAL uses "metre"
+            else:
+                projection_units = srs.GetAngularUnitsName()
+        except (RuntimeError, ValueError):
+            # raised if current_projection_wkt is unprojected
+            current_projection_wkt = None
+
+    default_pixelsize_input = model_spec.get_default_pixelsize_input()
+    if default_id is None and default_pixelsize_input:
+        default_id = default_pixelsize_input.id
+
+    options = []
+    for inp in model_spec.inputs:
+        if not isinstance(inp, (SingleBandRasterInput, RasterInput)):
+            continue
+        if inp.id == default_id:
+            display_name = f"(Default) {inp.name}"
+        else:
+            display_name = inp.name
+        formatted_pixelsize = ''
+        if current_projection_wkt and args.get(inp.id):
+            # convert pixel size to be in same units as selected target projection
+            try:
+                pixelsize = utils.get_raster_pixel_size_in_target_proj_units(
+                    args[inp.id], current_projection_wkt)
+                formatted_pixelsize = f" ({pixelsize[0]:.{3}g}, "\
+                    f"{abs(pixelsize[1]):.{3}g} {projection_units})"
+            except (RuntimeError, ValueError):  # raised if current_projection_wkt is unprojected
+                pass
+
+        display_name += f"{formatted_pixelsize}"
+        options.append(Option(key=inp.id, display_name=display_name))
+
+    options.sort(key=lambda x: x.key != default_id)
+    return options
+
+
+def set_metadata_field_descriptions(field_specs, resource):
+    """Set field or column descriptions on a geometamaker resource.
+
+    Uses column or field specs from a CSV or vector input or output.
+    Does not override existing metadata values.
+
+    Args:
+        field_specs (list[Input or Output]): list of column or field specs
+        resource (geometamaker.Resource): metadata resource to update
+
+    Returns:
+        None
+    """
+    # field names in attr_spec might not match the case of the
+    # actual fieldname in the data because
+    # invest does not require case-sensitive fieldnames
+    field_lookup = {
+        field.name.lower(): field for field in resource._get_fields()}
+    for nested_spec in field_specs:
+        try:
+            field_metadata = field_lookup[nested_spec.id.lower()]
+            # Field description only gets set if its empty, i.e. ''
+            if len(field_metadata.description.strip()) < 1:
+                resource.set_field_description(
+                    field_metadata.name, description=nested_spec.about)
+            # units only get set if empty
+            if len(field_metadata.units.strip()) < 1:
+                units = format_unit(nested_spec.units) if hasattr(
+                    nested_spec, 'units') else ''
+                resource.set_field_description(
+                    field_metadata.name, units=units)
+        except KeyError as error:
+            # fields that are in the spec but missing
+            # from model results because they are conditional.
+            LOGGER.debug(error)
+
+
 class ImmutableBaseModel(BaseModel):
     """BaseModel with frozen attributes."""
 
-    model_config = ConfigDict(frozen=True)
-    """Make models immutable so that they must be copied before modifying."""
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    """Make models immutable so that they must be copied before modifying, and
+       allow fields to have arbitrary types that don't inherit from BaseModel
+       (needed for pint.Unit)."""
 
 
 class IOModel(ImmutableBaseModel):
     """Base class for both `Input` and `Output`."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    """Allow fields to have arbitrary types that don't inherit from BaseModel
-    (needed for pint.Unit)."""
+    id: str
+    """Input/output identifier that should be unique within a model"""
+
+    about: typing.Union[str, None] = None
+    """User-facing description of the input/output"""
+
+    def configure_metadata(self, resource):
+        """Add metadata from this input/output to a geometamaker resource.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        if self.about:
+            resource.set_description(self.about)
+
+    def write_metadata_file(self, datasource_path, keywords_list,
+                            lineage_statement='', out_workspace=None):
+        """Write a metadata sidecar file for an invest dataset.
+
+        Create metadata for invest model inputs or outputs, taking care to
+        preserve existing human-modified attributes.
+
+        Note: We do not want to overwrite any existing metadata so if there is
+        invalid metadata for the datasource (i.e., doesn't pass geometamaker
+        validation in ``describe``), this function will NOT create new metadata.
+
+        Args:
+            datasource_path (str): filepath to the data to describe
+            keywords_list (list[str]): sequence of keywords
+            lineage_statement (str): (optional) string to describe origin of
+                the dataset
+            out_workspace (str): (optional) where to write metadata if different
+                from data location
+        Returns:
+            None
+
+        """
+        try:
+            resource = geometamaker.describe(datasource_path, compute_stats=True)
+        except ValueError as e:
+            # Don't want function to fail bc can't create metadata due to invalid filetype
+            LOGGER.debug(f"Skipping metadata creation for {datasource_path}: {e}")
+            return None
+        resource.set_lineage(lineage_statement)
+        # a pre-existing metadata doc could have keywords
+        words = resource.get_keywords()
+        resource.set_keywords(set(words + keywords_list))
+        self.configure_metadata(resource)
+        resource.write(workspace=out_workspace)
 
 
 class Input(IOModel):
@@ -203,9 +394,6 @@ class Input(IOModel):
     input field in the InVEST workbench. This does not store the value of the
     parameter for a specific run of the model.
     """
-    id: str
-    """Input identifier that should be unique within a model"""
-
     name: typing.Union[str, None] = None
     """The user-facing name of the input. The workbench UI displays this
     property as a label for each input. The name should be as short as
@@ -217,9 +405,6 @@ class Input(IOModel):
 
     Bad examples: ``PRECIPITATION``, ``kc_factor``, ``table of valuation parameters``
     """
-
-    about: typing.Union[str, None] = None
-    """User-facing description of the input"""
 
     keywords: typing.Union[list[natcap.invest.keywords.Keyword], None] = None
     """A list of keywords from a controlled vocabulary.
@@ -349,6 +534,43 @@ class Input(IOModel):
                         include_aliases=include_aliases)
         return list(set(keywords))
 
+    def validate(self, value):
+        """Validate this input's value in isolation."""
+        return None
+
+    def validate_with_context(self, value, args, model_spec):
+        """Validate this value using other model arguments."""
+        return None
+
+    def archive_for_datastack(self, value, datastack):
+        """Archive a given value of this input into a datastack.
+
+        This method can be overridden to handle specific types of input data,
+        or even for specific model inputs that need custom handling.
+        This is useful for tables (like HRA) that are too complicated
+        to describe in the MODEL_SPEC format, but use a common specification
+        for the other args keys.
+        Notes about overriding this method:
+
+          - should add the archived value to datastack.args
+          - should update datastack.files_found if any new files are included
+          - if this function copies data into datastack.target_dir, it _should_
+            be within its own folder (e.g.
+            {data_dir}/criteria_table_path_data/) to minimize chances of
+            stomping on other data.  But this is up to the function to
+            decide.
+          - The override function is responsible for logging whatever is
+            useful to include in the logfile.
+
+        Args:
+            value (object): value of this input
+            datastack (natcap.invest.datastack.Datastack): Datastack instance
+
+        Returns:
+            None
+        """
+        datastack.args[self.id] = value
+
 
 class Output(IOModel):
     """A data output, or result, of an invest model.
@@ -357,11 +579,6 @@ class Output(IOModel):
     an invest model. This does not store the value of the output for a specific
     run of the model.
     """
-    id: str
-    """Output identifier that should be unique within a model"""
-
-    about: typing.Union[str, None] = None
-    """User-facing description of the output"""
 
     created_if: typing.Union[bool, str] = True
     """Defaults to True. If the input is only created under a certain condition
@@ -438,6 +655,38 @@ class FileInput(Input):
 
         return col.apply(format_path).astype(pandas.StringDtype())
 
+    def archive_for_datastack(self, value, datastack):
+        """Archive a given value of this input into a datastack.
+
+        Args:
+            value (object): value of this input
+            datastack (natcap.invest.datastack.Datastack): Datastack instance
+
+        Returns:
+            None
+        """
+        if value in {None, ''}:
+            datastack.args[self.id] = ''
+            return
+
+        # Python can't handle mixed file separators, so let's just
+        # standardize on linux filepaths.
+        source_path = value.replace('\\', '/')
+
+        # If we already know about the parameter, then we can just reuse it
+        # and skip the file copying.
+        if source_path in datastack.files_found:
+            LOGGER.debug(
+                f'Key {self.id} is known: using {datastack.files_found[source_path]}')
+            datastack.args[self.id] = datastack.files_found[source_path]
+            return
+
+        target_filepath = os.path.join(datastack.target_dir, f'{self.id}_file')
+        shutil.copyfile(source_path, target_filepath)
+        datastack.args[self.id] = target_filepath
+        datastack.files_found[source_path] = target_filepath
+
+
 
 class SpatialFileInput(FileInput):
     """Base class for raster and vector spatial inputs."""
@@ -500,8 +749,42 @@ class SpatialFileInput(FileInput):
 
         return col.apply(format_path).astype(pandas.StringDtype())
 
+    def archive_for_datastack(self, value, datastack):
+        """Archive a given value of this input into a datastack.
 
-class RasterBand(IOModel):
+        Args:
+            value (object): value of this input
+            datastack (natcap.invest.datastack.Datastack): Datastack instance
+
+        Returns:
+            None
+        """
+        if value in {None, ''}:
+            datastack.args[self.id] = ''
+            return
+
+        # Python can't handle mixed file separators, so let's just
+        # standardize on linux filepaths.
+        source_path = value.replace('\\', '/')
+
+        # If we already know about the parameter, then we can just reuse it
+        # and skip the file copying.
+        if source_path in datastack.files_found:
+            LOGGER.debug(
+                f'Key {self.id} is known: using {datastack.files_found[source_path]}')
+            datastack.args[self.id] = datastack.files_found[source_path]
+            return
+
+        # Create a directory with a readable name, something like
+        # "aoi_path_vector" or "lulc_cur_path_raster".
+        spatial_dir = os.path.join(datastack.target_dir, f'{self.id}_{self.type}')
+        target_arg_value = utils.copy_spatial_files(
+            source_path, spatial_dir)
+        datastack.args[self.id] = target_arg_value
+        datastack.files_found[source_path] = target_arg_value
+
+
+class RasterBand(ImmutableBaseModel):
     """A representation of a single raster band."""
     band_id: typing.Union[int, str] = 1
     """band index used to access the raster band"""
@@ -552,6 +835,7 @@ class RasterInput(SpatialFileInput):
                 gdal_dataset = gdal.OpenEx(
                     gdal_path.to_normalized_path(), gdal.OF_RASTER)
             except RuntimeError:
+                gdal.VSICurlClearCache()
                 return validation_messages.NOT_GDAL_RASTER
 
             # Check that an overview .ovr file wasn't opened.
@@ -563,6 +847,23 @@ class RasterInput(SpatialFileInput):
                 srs, self.projected, self.projection_units)
             if projection_warning:
                 return projection_warning
+
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        for band in self.bands:
+            if len(resource.get_band_description(band.band_id).units) < 1:
+                resource.set_band_description(
+                    band.band_id, units=format_unit(band.units))
 
 
 class SingleBandRasterInput(SpatialFileInput):
@@ -608,6 +909,12 @@ class SingleBandRasterInput(SpatialFileInput):
                 gdal_dataset = gdal.OpenEx(
                     gdal_path.to_normalized_path(), gdal.OF_RASTER)
             except RuntimeError:
+                # vsicurl is not currently safe for multithreaded use.
+                # A deadlock can occur in this codepath so we manually clear
+                # the global cache before returning. Future GDAL versions
+                # may resolve this.
+                # https://github.com/natcap/invest/issues/2724
+                gdal.VSICurlClearCache()
                 return validation_messages.NOT_GDAL_RASTER
 
             # Check that an overview .ovr file wasn't opened.
@@ -649,6 +956,22 @@ class SingleBandRasterInput(SpatialFileInput):
             rst_line += f': {sanitized_about_string}'
 
         return [rst_line]
+
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        if len(resource.get_band_description(1).units) < 1:
+            units = format_unit(self.units)
+            resource.set_band_description(1, units=units)
 
 
 class VectorInput(SpatialFileInput):
@@ -713,6 +1036,7 @@ class VectorInput(SpatialFileInput):
                 gdal_dataset = gdal.OpenEx(
                     gdal_path.to_normalized_path(), gdal.OF_VECTOR)
             except RuntimeError:
+                gdal.VSICurlClearCache()
                 return validation_messages.NOT_GDAL_VECTOR
 
             geom_map = {
@@ -796,6 +1120,21 @@ class VectorInput(SpatialFileInput):
             rst_line += f': {sanitized_about_string}'
 
         return [rst_line]
+
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        if self.fields:
+            set_metadata_field_descriptions(self.fields, resource)
 
 
 class RasterOrVectorInput(SpatialFileInput):
@@ -1111,6 +1450,119 @@ class CSVInput(FileInput):
 
         return [rst_line]
 
+    def archive_for_datastack(self, value, datastack):
+        """Archive a given value of this input into a datastack.
+
+        Args:
+            value (object): value of this input
+            datastack (natcap.invest.datastack.Datastack): Datastack instance
+
+        Returns:
+            None
+        """
+        if value in {None, ''}:
+            datastack.args[self.id] = ''
+            return
+
+        # Python can't handle mixed file separators, so let's just
+        # standardize on linux filepaths.
+        source_path = value.replace('\\', '/')
+
+        # If we already know about the parameter, then we can just reuse it
+        # and skip the file copying.
+        if source_path in datastack.files_found:
+            LOGGER.debug(
+                f'Key {self.id} is known: using {datastack.files_found[source_path]}')
+            datastack.args[self.id] = datastack.files_found[source_path]
+            return
+
+        # check the CSV for columns that may reference files.
+        # But also, the columns specification might not be listed, so don't
+        # require that 'columns' exists in the MODEL_SPEC.
+
+        csv_dir = os.path.join(datastack.target_dir, f'{self.id}_csv')
+        os.makedirs(csv_dir)
+        target_csv_path = os.path.join(
+            csv_dir, os.path.basename(source_path))
+
+        if self.columns:
+            dataframe = self.get_validated_dataframe(source_path)
+
+            for column_spec in [c for c in self.columns if isinstance(c, FileInput)]:
+
+                # Iterate through the columns, identify the set of
+                # unique files and copy them out.
+                # if a string is not a filepath, assume it's supposed to be
+                # there and skip it
+                for row_index, value in dataframe[column_spec.id.lower()].items():
+                    if pandas.isna(value) or value == '':
+                        continue  # skip empty cells
+
+                    # file paths in a csv may be absolute, or relative to the
+                    # csv location
+                    if os.path.isabs(value):
+                        source_filepath = value
+                    else:
+                        source_filepath = os.path.join(os.path.abspath(
+                            os.path.dirname(source_path)), value)
+
+                    # If the file path doesn't exist, assume it's supposed to be
+                    # that way and leave it alone.
+                    if not os.path.exists(source_filepath):
+                        continue
+
+                    if source_filepath in datastack.files_found:
+                        # the file was already copied into the target dir,
+                        # so refer to the existing copy
+                        target_filepath = datastack.files_found[source_filepath]
+                    else:
+                        basename = os.path.splitext(
+                            os.path.basename(source_filepath))[0]
+                        target_dir = os.path.join(
+                            csv_dir, f'{self.id}_csv_data',
+                            f'{row_index}_{basename}')
+                        os.makedirs(target_dir)
+                        if isinstance(column_spec, SpatialFileInput):
+                            target_filepath = utils.copy_spatial_files(
+                                source_filepath, target_dir)
+                            target_filepath = os.path.relpath(
+                                target_filepath, csv_dir)
+                        else:
+                            target_filepath = os.path.join(target_dir,
+                                os.path.basename(source_filepath))
+                            shutil.copyfile(source_filepath, target_filepath)
+                            target_filepath = os.path.relpath(
+                                target_filepath, csv_dir)
+
+                    LOGGER.debug(
+                        'File referenced in CSV copied from '
+                        f'{source_filepath} --> {target_filepath}')
+                    dataframe.at[
+                        row_index, column_spec.id] = target_filepath
+                    datastack.files_found[source_filepath] = target_filepath
+
+            dataframe.to_csv(target_csv_path, index=self.index_col is not None)
+            LOGGER.debug(f'CSV rewritten to {target_csv_path}')
+        else:
+            shutil.copyfile(source_path, target_csv_path)
+        datastack.args[self.id] = target_csv_path
+        datastack.files_found[source_path] = target_csv_path
+
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        if self.columns:
+            set_metadata_field_descriptions(self.columns, resource)
+
 
 class WorkspaceInput(Input):
     """A workspace directory path input to an invest model.
@@ -1187,6 +1639,10 @@ class WorkspaceInput(Input):
             'name': self.name,
             'about': self.about
         }
+
+    def archive_for_datastack(self, value, datastack):
+        """Skip the workspace directory when building a datastack archive"""
+        pass
 
 
 class NumberInput(Input):
@@ -1737,6 +2193,46 @@ class OptionStringInput(Input):
         return [rst_line] + ['\t' + line for line in indented_block]
 
 
+class OptionSpatialInput(OptionStringInput):
+    """A string input which has an additional projection_units attribute.
+
+    This corresponds to a dropdown menu in the workbench, where the user
+    is limited to a set of pre-defined options.
+    """
+    projection_units: typing.Union[pint.Unit, None] = None
+    """The units in which a selected spatial file input must be projected.
+    Defaults to None. """
+
+    projected: typing.Union[bool, None] = None
+    """Whether the selected input must be projected. Defaults to None."""
+
+    def validate(self, value):
+        message = super().validate(value)
+        if message:
+            return message
+
+    def validate_with_context(self, value, args, model_spec):
+        if not value:
+            return validation_messages.MISSING_VALUE
+
+        try:
+            selected_spec = model_spec.get_input(value)
+        except KeyError:
+            return validation_messages.MISSING_KEY
+
+        filepath = args.get(value)
+        if not filepath:
+            return validation_messages.MISSING_SOURCE_DATA.format(
+                dataset_name=selected_spec.name)
+
+        projection_spec = selected_spec.model_copy(update={
+            'projected': self.projected,
+            'projection_units': self.projection_units,
+        })
+
+        return projection_spec.validate(filepath)
+
+
 class FileOutput(Output):
     """A generic file output, or result, of an invest model.
 
@@ -1759,6 +2255,22 @@ class SingleBandRasterOutput(FileOutput):
     units: typing.Union[pint.Unit, None] = None
     """units of measurement of the raster values"""
 
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        if len(resource.get_band_description(1).units) < 1:
+            units = format_unit(self.units)
+            resource.set_band_description(1, units=units)
+
 
 class RasterOutput(FileOutput):
     """A raster output, or result, of an invest model.
@@ -1769,6 +2281,23 @@ class RasterOutput(FileOutput):
     bands: list[RasterBand]
     """An iterable of `RasterBand` representing the bands expected to be in
     the raster."""
+
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        for band in self.bands:
+            if len(resource.get_band_description(band.band_id).units) < 1:
+                resource.set_band_description(
+                    band.band_id, units=format_unit(band.units))
 
 
 class VectorOutput(FileOutput):
@@ -1802,6 +2331,21 @@ class VectorOutput(FileOutput):
 
     def get_field(self, key: str) -> Output:
         return self._fields_dict[key]
+
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        if self.fields:
+            set_metadata_field_descriptions(self.fields, resource)
 
 
 class CSVOutput(FileOutput):
@@ -1854,6 +2398,21 @@ class CSVOutput(FileOutput):
 
     def get_column(self, key: str) -> Output:
         return self._columns_dict[key]
+
+    def configure_metadata(self, resource):
+        """Update a geometamaker resource with metadata for this output.
+
+        Will not overwrite existing values.
+
+        Args:
+            resource (geometamaker.Resource): metadata resource to update
+
+        Returns:
+            None
+        """
+        super().configure_metadata(resource)
+        if self.columns:
+            set_metadata_field_descriptions(self.columns, resource)
 
 
 class NumberOutput(Output):
@@ -1958,6 +2517,19 @@ class ModelSpec(ImmutableBaseModel):
     refer to a ``VectorInput``.
     """
 
+    default_projection_id: str = ''
+    """The ID of the input which has the projection (and typically, alignment)
+    to which other inputs are reprojected by default. A user can select a
+    different input to represent the target projection, but this input will be
+    selected by default. The value must match the id of another model input."""
+
+    default_pixelsize_id: str = ''
+    """The ID of the input which has the pixel size to which other inputs
+    should be resampled by default. A user can select a different input to
+    represent the target pixel size, but this input will be selected by
+    default. The value must match the id of another model input."""
+
+
     inputs: list[Input]
     """A list of the data inputs, or parameters, to the model."""
 
@@ -2040,6 +2612,59 @@ class ModelSpec(ImmutableBaseModel):
                 raise TypeError('aoi_input_id must refer to a VectorInput.')
         return self
 
+    @model_validator(mode='after')
+    def check_valid_default_projection_id(self):
+        """Ensure default_projection_id points to valid spatial input ID"""
+        if self.default_projection_id:
+            try:
+                projection_input = self.get_input(self.default_projection_id)
+            except KeyError:
+                raise ValueError(
+                    'Invalid default_projection_id. No input with id '
+                    f'"{self.default_projection_id}"')
+            if not isinstance(projection_input, SpatialFileInput):
+                raise ValueError(
+                    'Invalid default_projection_id. Input with id '
+                    f'"{self.default_projection_id}" is not a spatial input')
+        return self
+
+    @model_validator(mode='after')
+    def check_valid_default_pixelsize_id(self):
+        """Ensure default_pixelsize_id points to valid raster input ID"""
+        if self.default_pixelsize_id:
+            try:
+                pixelsize_input = self.get_input(self.default_pixelsize_id)
+            except KeyError:
+                raise ValueError(
+                    'Invalid default_pixelsize_id. No input with id '
+                    f'"{self.default_pixelsize_id}"')
+            if not isinstance(pixelsize_input, (RasterInput,
+                                                SingleBandRasterInput)):
+                raise ValueError(
+                    'Invalid default_pixelsize_id. Input with id '
+                    f'"{self.default_pixelsize_id}" is not a raster input')
+        return self
+
+    @model_validator(mode='after')
+    def check_default_projection_if_target_projection_input(self):
+        """If model has target_projection_id, default_projection_id required."""
+        has_target_projection_input = 'target_projection_id' in [
+            i.id for i in self.inputs]
+        if has_target_projection_input and not self.default_projection_id:
+            raise ValueError('Model has a target_projection_id input but no '
+                             'default_projection_id specified')
+        return self
+
+    def get_default_projection_input(self):
+        if self.default_projection_id:
+            return self.get_input(self.default_projection_id)
+        return None
+
+    def get_default_pixelsize_input(self):
+        if self.default_pixelsize_id:
+            return self.get_input(self.default_pixelsize_id)
+        return None
+
     def get_input(self, key: str) -> Input:
         """Get an Input of this model by its key."""
         return {_input.id: _input for _input in self.inputs}[key]
@@ -2115,6 +2740,31 @@ class ModelSpec(ImmutableBaseModel):
                 input_values.get(_input.id, None))
         return values
 
+    def preprocess_spatial_reference_args(self, args):
+        """Set target_projection_id and target_pixelsize_id to defaults if not set
+
+        The resulting dict will have set key ``target_projection_id`` to
+        ``default_projection_id`` and ``target_pixelsize_id`` to
+        ``default_pixelsize_id``, if the latter is specified.
+
+        Args:
+            args (dict): argument dictionary mapping input keys to input values
+
+        Returns:
+            dictionary mapping input keys to preprocessed input values
+        """
+        args_copy = args.copy()
+        if not args.get('target_projection_id'):
+            args_copy['target_projection_id'] = self.get_default_projection_input().id
+
+        if not args.get('target_pixelsize_id'):
+            default_pixelsize_input = self.get_default_pixelsize_input()
+            # NOTE: UMH does not have a default_pixelsize_id, it sets default
+            # dynamically in the dropdown function.
+            if default_pixelsize_input:
+                args_copy['target_pixelsize_id'] = default_pixelsize_input.id
+        return args_copy
+
     def generate_metadata_for_outputs(self, file_registry, args_dict):
         """Create metadata for all items in an invest model output workspace.
 
@@ -2144,9 +2794,8 @@ class ModelSpec(ImmutableBaseModel):
                     if 'taskgraph.db' in value:
                         return
                     try:
-                        write_metadata_file(
-                            value, self.get_output(root_key),
-                            keywords, lineage_statement)
+                        self.get_output(root_key).write_metadata_file(
+                            value, keywords, lineage_statement)
                     except ValueError as error:
                         # Some unsupported file formats, e.g. html
                         LOGGER.debug(error)
@@ -2445,6 +3094,28 @@ WATERSHED_VECTOR = VectorInput(
 )
 PROJECTED_WATERSHED_VECTOR = WATERSHED_VECTOR.model_copy(
     update=dict(projected=True))
+TARGET_PROJECTION = OptionSpatialInput(
+    id="target_projection_id",
+    name=gettext("target projection"),
+    about=gettext(
+        "Input with target projection to which all other spatial "
+        "inputs will be reprojected."),
+    required=False,  # models will fallback to using default target projections
+    options=[],
+    projected=True,
+    dropdown_function=_get_projection_inputs_options
+)
+TARGET_PIXELSIZE = OptionSpatialInput(
+    id="target_pixelsize_id",
+    name=gettext("target pixel size"),
+    about=gettext(
+        "Input with target pixel size to which all other spatial "
+        "inputs will be resampled. Units displayed match those of the selected "
+        "Target Projection."),
+    required=False,  # models will fallback to using default target pixel size
+    options=[],
+    dropdown_function=_get_pixel_size_options
+)
 
 # Specs for common outputs ####################################################
 TASKGRAPH_CACHE = FileOutput(
@@ -2608,77 +3279,3 @@ def format_type_string(_input):
             f'`{_input._single_band_raster_input.display_name} <{INPUT_TYPES_HTML_FILE}#{SingleBandRasterInput.rst_section}>`__ or '
             f'`{_input._vector_input.display_name} <{INPUT_TYPES_HTML_FILE}#{VectorInput.rst_section}>`__')
     return f'`{_input.display_name} <{INPUT_TYPES_HTML_FILE}#{_input.rst_section}>`__'
-
-
-def write_metadata_file(datasource_path, spec, keywords_list,
-                        lineage_statement='', out_workspace=None):
-    """Write a metadata sidecar file for an invest dataset.
-
-    Create metadata for invest model inputs or outputs, taking care to
-    preserve existing human-modified attributes.
-
-    Note: We do not want to overwrite any existing metadata so if there is
-    invalid metadata for the datasource (i.e., doesn't pass geometamaker
-    validation in ``describe``), this function will NOT create new metadata.
-
-    Args:
-        datasource_path (str) - filepath to the data to describe
-        spec (dict) - the invest specification for ``datasource_path``
-        keywords_list (list) - sequence of strings
-        lineage_statement (str, optional) - string to describe origin of
-            the dataset
-        out_workspace (str, optional) - where to write metadata if different
-            from data location
-    Returns:
-        None
-
-    """
-    try:
-        resource = geometamaker.describe(datasource_path, compute_stats=True)
-    except ValueError as e:
-        # Don't want function to fail bc can't create metadata due to invalid filetype
-        LOGGER.debug(f"Skipping metadata creation for {datasource_path}: {e}")
-        return None
-    resource.set_lineage(lineage_statement)
-    # a pre-existing metadata doc could have keywords
-    words = resource.get_keywords()
-    # TODO: there could also be keywords attached to the `spec`.
-    resource.set_keywords(set(words + keywords_list))
-
-    if spec.about:
-        resource.set_description(spec.about)
-    attr_specs = None
-    if hasattr(spec, 'columns') and spec.columns:
-        attr_specs = spec.columns
-    if hasattr(spec, 'fields') and spec.fields:
-        attr_specs = spec.fields
-    if attr_specs:
-        # field names in attr_spec might not match the case of the
-        # actual fieldname in the data because
-        # invest does not require case-sensitive fieldnames
-        field_lookup = {
-            field.name.lower(): field for field in resource._get_fields()}
-        for nested_spec in attr_specs:
-            try:
-                field_metadata = field_lookup[nested_spec.id.lower()]
-                # Field description only gets set if its empty, i.e. ''
-                if len(field_metadata.description.strip()) < 1:
-                    resource.set_field_description(
-                        field_metadata.name, description=nested_spec.about)
-                # units only get set if empty
-                if len(field_metadata.units.strip()) < 1:
-                    units = format_unit(nested_spec.units) if hasattr(
-                        nested_spec, 'units') else ''
-                    resource.set_field_description(
-                        field_metadata.name, units=units)
-            except KeyError as error:
-                # fields that are in the spec but missing
-                # from model results because they are conditional.
-                LOGGER.debug(error)
-    if isinstance(spec, SingleBandRasterInput) or isinstance(
-            spec, SingleBandRasterOutput):
-        if len(resource.get_band_description(1).units) < 1:
-            units = format_unit(spec.units)
-            resource.set_band_description(1, units=units)
-
-    resource.write(workspace=out_workspace)

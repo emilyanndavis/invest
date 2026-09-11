@@ -670,6 +670,11 @@ exceed 100% of window.*/
   }
 }
 
+select[name="target_projection_id"],
+select[name="target_pixelsize_id"] {
+  text-transform: capitalize;
+}
+
 .args-form {
   --form-field-padding-right: 2em;
 }
@@ -863,7 +868,7 @@ input[type=text]::placeholder {
 
 /* Manage Plugins modal */
 .plugin-modal {
-  width: 34rem;
+  width: 40rem;
   form {
     & > div,
     & > button {

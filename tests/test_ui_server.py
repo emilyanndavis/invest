@@ -45,7 +45,8 @@ class EndpointFunctionTests(unittest.TestCase):
         self.assertEqual(
             set(spec),
             {'model_id', 'model_title', 'userguide', 'aliases', 'reporter',
-             'about', 'input_field_order', 'different_projections_ok',
+             'about', 'input_field_order', 'default_projection_id',
+             'default_pixelsize_id', 'different_projections_ok',
              'validate_spatial_overlap', 'args', 'outputs', 'module_name'})
 
     def test_get_invest_validate(self):
@@ -159,7 +160,7 @@ class EndpointFunctionTests(unittest.TestCase):
         target_filepath = os.path.join(self.workspace_dir, 'data.tgz')
         data_path = os.path.join(self.workspace_dir, 'data.csv')
         with open(data_path, 'w') as file:
-            file.write('hello')
+            file.write('lucode,c_above,c_below,c_soil,c_dead')
 
         payload = {
             'filepath': target_filepath,
