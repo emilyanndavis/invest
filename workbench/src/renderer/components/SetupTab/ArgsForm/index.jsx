@@ -137,21 +137,15 @@ class ArgsForm extends React.Component {
     if (aoiIsValid && aoiPath !== this.cachedAoiPath) {
       // Clear extent to avoid displaying previous values while awaiting update.
       this.setState({searchExtent: []});
-      // console.log(`AOI path changed. Fetching bounding box for file at ${aoiPath}`);
-      // @TODO: remove timeout when done testing loading state
-      setTimeout(() => {
-        getVectorBoundingBox(
-          { vector_path: aoiPath }
-        ).then(({ vector_bbox }) => {
-          this.setState({
-            ...this.state,
-            searchExtent: vector_bbox
-          }, () => {
-            // console.log(`new searchExtent: ${this.state.searchExtent}`);
-          });
-          this.cachedAoiPath = aoiPath;
+      getVectorBoundingBox(
+        { vector_path: aoiPath }
+      ).then(({ vector_bbox }) => {
+        this.setState({
+          ...this.state,
+          searchExtent: vector_bbox
         });
-      }, 350);
+        this.cachedAoiPath = aoiPath;
+      });
     }
   };
 
