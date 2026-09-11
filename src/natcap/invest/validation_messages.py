@@ -40,3 +40,4 @@ NEED_PERMISSION_DIRECTORY = gettext(
 NEED_PERMISSION_FILE = gettext(
     'You must have {permission} access to this file')
 WRONG_GEOM_TYPE = gettext('Geometry type must be one of {allowed}')
+MISSING_SOURCE_DATA = gettext("Source dataset: {dataset_name} is missing")

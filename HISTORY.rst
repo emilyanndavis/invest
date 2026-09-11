@@ -67,6 +67,30 @@
   Unreleased Changes
   ------------------
 
+General
+=======
+* Some models now allow users to select which raster or vector
+  input defines the output pixel size and projection.
+  (`#2267 <https://github.com/natcap/invest/issues/2267>`_)
+
+Annual Water Yield
+==================
+* A user may now select which model inputs define the target projection and
+  pixel size, respectively, for the model outputs. If not specified, the
+  model will use the projection and pixel size of the LULC raster.
+  (`#2267 <https://github.com/natcap/invest/issues/2267>`_)
+
+Urban Mental Health
+===================
+* A user may now select which model inputs define the target projection and
+  pixel size, respectively, for the model outputs. If not specified, the
+  model will use the projection of the AOI and the pixel size of either
+  the Baseline NDVI or Baseline LULC raster, depending on which model option
+  is selected. (`#2267 <https://github.com/natcap/invest/issues/2267>`_)
+* ``_get_raster_pixel_size_in_meters`` now always returns the target pixel
+  size transformed into the target projection, instead of only converting if
+  the target pixel size was not already projected in meters.
+
 3.20.2 (2026-09-02)
 -------------------
 
