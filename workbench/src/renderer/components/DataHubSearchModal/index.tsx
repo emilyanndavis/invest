@@ -1,22 +1,26 @@
 import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react';
 
 import Button from 'react-bootstrap/Button';
-import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
-import Spinner from 'react-bootstrap/Spinner';
 import { useTranslation } from 'react-i18next';
 import { MdClose } from 'react-icons/md';
-import {
-  TbMapSearch,
-  TbZoomCancel,
-  TbZoomExclamation,
-} from 'react-icons/tb';
 
-import { transformDHALSearchResult, type DataHubSearchResult, type DHALDataset } from './models';
-import DataHubSearchResultCard from './DataHubSearchResultCard';
-import DataHubSearchParams from './DataHubSearchParams';
-import { DHALSearchParams, type DataHubSearchQuery } from './DataHubSearchParams/models';
-import { openLinkInBrowser } from '../../utils';
+import {
+  transformDHALSearchResult,
+  type DataHubSearchResult,
+  type DHALDataset
+} from './models';
+import {
+  DHALSearchParams,
+  type DataHubSearchQuery
+} from './DataHubSearchParams/models';
+import {
+  DataHubSearchIntroBody,
+  DataHubSearchIntroFooter,
+  DataHubSearchResultsBody,
+  DataHubSearchResultsFooter,
+  DataHubSearchSearchingBody
+} from './DataHubSearchModalViews';
 
 interface DataHubSearchModalProps {
   show: boolean,
@@ -29,7 +33,6 @@ interface DataHubSearchModalProps {
 }
 
 const DHAL_BASE_URL = 'https://data.naturalcapitalalliance.stanford.edu/dhal/search_dataset/';
-// const DHAL_BASE_URL = 'http://127.0.0.1:8000/search_dataset/';
 
 const INTRO_STEP = 0;
 const SEARCHING_STEP = 1;
@@ -63,8 +66,9 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   };
 
   useEffect(() => {
-    // Modal automatically receives focused upon opening.
-    // This re-focuses the modal when its content changes.
+    // Modal automatically receives focus when it first opens.
+    // This effect re-focuses the modal when its content changes,
+    // to better support keyboard operability & screen reader navigation.
     autoFocusRef.current?.dialog?.focus();
   }, [step]);
 
@@ -115,7 +119,12 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     if (searching) {
       const params = new DHALSearchParams(query);
       fetch(`${DHAL_BASE_URL}?${params}`)
-        .then((response) => response.json())
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          return response.json();
+        })
         .then(({ count, datasets }) => {
           setNumSearchResults(count);
           setSearchResults(datasets.map((d: DHALDataset) => transformDHALSearchResult(d)));
@@ -124,7 +133,7 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
         })
         .catch((error) => {
           setSearchError(true);
-          console.error(error.stack);
+          console.error((error as Error).message);
         })
         .finally(() => nextStep())
     }
@@ -210,184 +219,5 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
         </Modal.Footer>
       }
     </Modal>
-  );
-}
-
-interface IntroBodyProps {
-  aoiInputName: string,
-  aoiIsValid: boolean,
-  query: DataHubSearchQuery,
-}
-
-function DataHubSearchIntroBody(props: IntroBodyProps) {
-  const { aoiIsValid, aoiInputName, query } = props;
-  const { t } = useTranslation();
-
-  return (
-      <>
-        <p>
-          {t(`Search the Natural Capital Alliance Data Hub for datasets you can
-            use in InVEST without having to download them first.`)}
-        </p>
-        {/* @TODO: add loading spinner if/when awaiting AOI validation status, AOI extent, and/or collection string. */}
-      {
-        aoiIsValid
-        ? <DataHubSearchParams
-            tags={query.tags}
-            datatype={query.datatype}
-            extent={query.extent}
-            collections={query.collections}
-          />
-        : <>
-            <div className="search-error">
-              <TbZoomCancel aria-label={t('Error')} className="error-icon" />
-              <span>
-                {t(`Before searching, you must specify a valid path for the following input:`)}
-                <strong className="aoi-input-name">{aoiInputName}</strong>
-              </span>
-            </div>
-          </>
-        }
-      </>
-  );
-}
-
-function DataHubSearchSearchingBody() {
-  const { t } = useTranslation();
-
-  return (
-    <>
-      <Spinner animation="border" role="status" className="search-spinner"></Spinner>
-    </>
-  );
-}
-
-interface ResultsBodyProps {
-  query: DataHubSearchQuery,
-  searchError: boolean,
-  numSearchResults: number,
-  searchResults: DataHubSearchResult[],
-  toggleExpandCard: (id: string) => void,
-  toggleExpandAll: (event: ChangeEvent) => void,
-  cardsExpanded: Map<string, boolean>,
-  selectDataset: (url: string, collections: string[]) => void,
-}
-
-function DataHubSearchResultsBody(props: ResultsBodyProps) {
-  const {
-    query, searchError, numSearchResults, searchResults,
-    toggleExpandCard, toggleExpandAll, cardsExpanded, selectDataset } = props;
-  const { t } = useTranslation();
-
-  return (
-    <>
-      <DataHubSearchParams
-        tags={query.tags}
-        datatype={query.datatype}
-        extent={query.extent}
-        collections={query.collections}
-      />
-      {
-        searchError
-        ? <>
-            <div className="search-error">
-              <TbZoomExclamation aria-label={t('Error')} className="error-icon" />
-              <span>
-                {t(`An error occurred. Please check your internet connection, then try again.
-                  If the problem persists, consider reporting it on the NatCap Community Forum.`)}
-              </span>
-            </div>
-            <a
-              href="https://community.naturalcapitalalliance.org/"
-              className="d-flex justify-content-center"
-              onClick={openLinkInBrowser}
-            >
-              {t('Natural Capital Alliance Community Forum (opens in web browser)')}
-            </a>
-          </>
-        : (
-            numSearchResults
-            ? <>
-                <div className="search-results-header">
-                  <p>{numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}</p>
-                  <Form.Check
-                    type="switch" // type="switch" controls styling
-                    role="switch" // role="switch" communicates correct semantics to assistive tech
-                    id="expand-all"
-                    label={t('Expand All')}
-                    onChange={toggleExpandAll}
-                  />
-                </div>
-                <div className="search-results">
-                  {searchResults.map((result =>
-                    <DataHubSearchResultCard
-                      key={result.id}
-                      datasetDetails={result}
-                      expanded={cardsExpanded.get(result.id) ? true : false}
-                      onToggleExpanded={() => toggleExpandCard(result.id)}
-                      onSelect={selectDataset}
-                    />
-                  ))}
-                </div>
-              </>
-            : <>
-                <p>{t('No results found.')}</p>
-                <TbMapSearch className="no-results-icon" aria-hidden="true" />
-                <p>
-                  {t(`We are actively working on adding more datasets to the Data Hub
-                  to meet the needs of InVEST users. Please check back later as the
-                  collection grows!`)}
-                </p>
-                <p>
-                  {t(`In the meantime, if you'd like to explore the Data Hub on your
-                    own, you can visit it on the web:`)}
-                  <a
-                    href="https://data.naturalcapitalalliance.stanford.edu/"
-                    className="d-flex"
-                    onClick={openLinkInBrowser}
-                  >
-                    {t(`Natural Capital Alliance Data Hub (opens in web browser)`)}
-                  </a>
-                </p>
-              </>
-          )
-      }
-    </>
-  );
-}
-
-function DataHubSearchIntroFooter(
-  props: {
-    aoiIsValid: boolean,
-    aoiInputName: string,
-    search: () => void,
-    close: () => void,
-    goToAoiInput: () => void,
-  }
-) {
-  const { aoiIsValid, aoiInputName, search, close, goToAoiInput } = props;
-  const { t } = useTranslation();
-
-  return (
-      aoiIsValid
-      ? <Button onClick={search}>{t('Search')}</Button>
-      : <>
-          <Button variant="outline-primary" onClick={close}>{t('OK')}</Button>
-          <Button onClick={goToAoiInput}>{t(`Go to ${aoiInputName} form field`)}</Button>
-        </>
-  );
-}
-
-function DataHubSearchResultsFooter(
-  props: {searchError: boolean, search: () => void}
-) {
-  const { searchError, search } = props;
-  const { t } = useTranslation();
-
-  return (
-      searchError &&
-      <>
-        <Button onClick={search}>{t('Search again')}</Button>
-      </>
   );
 }
