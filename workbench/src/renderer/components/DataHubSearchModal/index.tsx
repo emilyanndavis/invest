@@ -129,13 +129,15 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
           setNumSearchResults(count);
           setSearchResults(datasets.map((d: DHALDataset) => transformDHALSearchResult(d)));
           collapseAllCards();
-          setSearching(false);
         })
         .catch((error) => {
           setSearchError(true);
           console.error((error as Error).message);
         })
-        .finally(() => nextStep())
+        .finally(() => {
+          setSearching(false);
+          nextStep();
+        })
     }
   }, [searching]);
 
