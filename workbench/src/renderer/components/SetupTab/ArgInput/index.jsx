@@ -274,11 +274,17 @@ export default function ArgInput({
     selectSearchResult(argkey, url, collections, searchSiblingType);
   };
 
+  const enableSearch = (
+    isCoreModel
+    && aoiInputName
+    && aoiInputName !== argSpec.name
+    && ['csv', 'raster'].includes(argSpec.type)
+    && argSpec.keywords
+    && argSpec.keywords.length > 0
+  );
+
   let searchButton = <React.Fragment />;
-  // @TODO: refine this condition if needed (e.g., should any input w/o keywords be skipped?)
-  if (isCoreModel && aoiInputName && aoiInputName !== argSpec.name
-      && ['csv', 'raster'].includes(argSpec.type)
-  ) {
+  if (enableSearch) {
     searchButton = (
       <>
         <Button
