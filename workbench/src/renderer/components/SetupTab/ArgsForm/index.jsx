@@ -210,12 +210,16 @@ class ArgsForm extends React.Component {
             searchExtent: this.currentBoundingBox,
             searchExtentUpdateComplete: true,
           });
-          // @TODO: ¿Is it sufficient to delete only this aoiPath, or should the entire object be cleared?
           delete this.pendingAoiPaths[aoiPath];
           this.cachedBoundingBoxes[aoiPath] = vector_bbox;
           console.log(this.cachedBoundingBoxes);
         } else {
-          console.log('This call is outdated (new AOI path).');
+          // Received response to outdated call to getVectorBoundingBox.
+          // Cache bbox in case it's needed later, but do not update state.
+          console.log(`Received response for outdated AOI path (${aoiPath}). Caching bbox without updating state…`);
+          this.cachedBoundingBoxes[aoiPath] = vector_bbox;
+          delete this.pendingAoiPaths[aoiPath];
+          console.log(this.cachedBoundingBoxes);
         }
       });
     }
