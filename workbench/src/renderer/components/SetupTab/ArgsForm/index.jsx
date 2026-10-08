@@ -128,30 +128,59 @@ class ArgsForm extends React.Component {
     }
   }
 
-  cachedBoundingBoxes = {
-    '': [],
-  };
+  /* Some local state to support handling of calls to updateSearchExtent. */
   currentBoundingBox = [];
-  pendingAoiPaths = {};
+  pendingAoiPath = '';
   aoiBboxCallStack = [];
 
+  /**
+   * @function updateSearchExtentState
+   * If the provided timestamp is at the top of the call stack,
+   * update search extent-related state and clear call stack.
+   * Otherwise, do nothing.
+   *
+   * @param {number} timestamp
+   * @param {array[number]} bbox
+   *
+   * @returns {void}
+   */
+  updateSearchExtentState = (timestamp, bbox) => {
+    const stackSize = this.aoiBboxCallStack.length;
+    if (stackSize && this.aoiBboxCallStack[stackSize - 1] === timestamp) {
+      console.log(`Updating state and clearing call stack…`);
+      this.aoiBboxCallStack = [];
+      this.currentBoundingBox = bbox;
+      this.setState({
+        searchExtent: this.currentBoundingBox,
+        searchExtentUpdateComplete: true,
+      });
+    // @TODO: Remove else block when done testing.
+    } else {
+      console.log('Ignoring outdated call.');
+    }
+  };
+
+  /**
+   * @function updateSearchExtent
+   * Handle request to update the extent parameter in a Data Hub search query.
+   * Depending on context, either set extent to [] and update state,
+   * fetch the current AOI's bounding box and update state, or do nothing.
+   *
+   * @returns {void}
+   */
   updateSearchExtent = () => {
     const { aoiInputId, argsValidation, argsValidationComplete, argsValues } = this.props;
     const aoiIsValid = argsValidation[aoiInputId]?.valid || false;
-    // Locally set aoiPath to '' if AOI is invalid. This simplifies later logic.
-    const aoiPath = aoiIsValid ? (argsValues[aoiInputId]?.value || '') : '';
+    const aoiPath = argsValues[aoiInputId]?.value || '';
 
     // If awaiting validation
     // OR if awaiting a bounding box calculation for this aoiPath
-    // OR if the bounding box is known and unchanged from the last update,
+    // OR if AOI is invalid and bounding box is already [],
     // do nothing.
     if (
       !argsValidationComplete
-      || aoiPath in this.pendingAoiPaths
-      || (
-        aoiPath in this.cachedBoundingBoxes
-        && this.currentBoundingBox === this.cachedBoundingBoxes[aoiPath]
-      )
+      || aoiPath === this.pendingAoiPath
+      || (!aoiIsValid && !this.currentBoundingBox.length)
     ) {
       console.log('Bbox is unchanged, or bbox calculation for this aoiPath is in progress. Goodbye.');
       return;
@@ -168,60 +197,23 @@ class ArgsForm extends React.Component {
     this.aoiBboxCallStack.push(timestamp);
     console.log(this.aoiBboxCallStack);
 
-    if (
-      aoiPath in this.cachedBoundingBoxes
-      && this.currentBoundingBox !== this.cachedBoundingBoxes[aoiPath]
-    ) {
-      // If AOI bounding box is already known AND it is not the current
-      // bounding box, update state using cached value. Otherwise, do nothing.
-      // Since this operation doesn't involve an async call, it's unlikely
-      // we're handling an outdated call to updateSearchExtent. But it's worth
-      // checking, just in case.
-      const stackSize = this.aoiBboxCallStack.length;
-      if (stackSize && this.aoiBboxCallStack[stackSize - 1] === timestamp) {
-        console.log(`Bounding box already cached for this AOI path ('${aoiPath}'). Clearing call stack…`);
-        this.aoiBboxCallStack = [];
-        this.currentBoundingBox = this.cachedBoundingBoxes[aoiPath];
-        this.setState({
-          searchExtent: this.currentBoundingBox,
-          searchExtentUpdateComplete: true,
-        });
-      } else {
-        console.log('This call is outdated (bbox already cached).');
-      }
-    } else if (
-      !(aoiPath in this.cachedBoundingBoxes)
-      && !(aoiPath in this.pendingAoiPaths)
-    ) {
-      // Fetch AOI bounding box if we don't already have it AND
-      // if there isn't already an active bounding box request using this AOI.
-      this.pendingAoiPaths[aoiPath] = true;
+    if (!aoiIsValid && this.currentBoundingBox.length) {
+      this.updateSearchExtentState(timestamp, []);
+    } else if (aoiPath !== this.pendingAoiPath) {
+      this.pendingAoiPath = aoiPath;
       console.log(`Fetching bounding box for ${aoiPath}…`);
       getVectorBoundingBox(
         { vector_path: aoiPath }
       ).then(({ vector_bbox }) => {
-        // @TODO: Extract repeated code into a separate function.
-        const stackSize = this.aoiBboxCallStack.length;
-        if (stackSize && this.aoiBboxCallStack[stackSize - 1] === timestamp) {
-          console.log('Received response to latest fetch bounding box call. Clearing call stack…');
-          this.aoiBboxCallStack = [];
-          this.currentBoundingBox = vector_bbox;
-          this.setState({
-            searchExtent: this.currentBoundingBox,
-            searchExtentUpdateComplete: true,
-          });
-          delete this.pendingAoiPaths[aoiPath];
-          this.cachedBoundingBoxes[aoiPath] = vector_bbox;
-          console.log(this.cachedBoundingBoxes);
-        } else {
-          // Received response to outdated call to getVectorBoundingBox.
-          // Cache bbox in case it's needed later, but do not update state.
-          console.log(`Received response for outdated AOI path (${aoiPath}). Caching bbox without updating state…`);
-          this.cachedBoundingBoxes[aoiPath] = vector_bbox;
-          delete this.pendingAoiPaths[aoiPath];
-          console.log(this.cachedBoundingBoxes);
-        }
+        this.updateSearchExtentState(timestamp, vector_bbox);
+        this.pendingAoiPath = '';
       });
+      // Note: state is updated only when handling the response to the latest
+      // call to getVectorBoundingBox. Other (outdated) responses are ignored.
+      // It could be useful to cache outdated responses in case they're needed
+      // later. But since that adds significant complexity and could have
+      // unwanted side effects, we decided it's not worth implementing
+      // until/unless there's an obvious need.
     }
   };
 

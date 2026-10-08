@@ -49,7 +49,7 @@ enum searchStep {
   RESULTS,
 }
 
-export const searchModalContentHeadingCssClass = 'search-modal-content-heading';
+export const searchModalContentSummaryCssClass = 'search-modal-content-summary';
 export const searchModalAutoFocusId = 'search-modal-auto-focus';
 const autoFocusSelector = `#${searchModalAutoFocusId}`;
 
@@ -69,12 +69,21 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
   const { t } = useTranslation();
 
+  const getLoadingOrIntroStep = (): searchStep => {
+    if (
+      query.datatype === 'raster'
+      && (!argsValidationComplete || (aoiIsValid && !searchExtentUpdateComplete))
+    ) {
+      // Disallow searching for a raster while waiting for AOI validation or
+      // for a valid extent.
+      return searchStep.LOADING;
+    } else {
+      // Allow search or render "Invalid AOI" error as appropriate.
+      return searchStep.INTRO;
+    }
+  }
 
-  const [step, setStep] = useState<searchStep>(
-    (query.datatype === 'raster')
-    ? searchStep.LOADING
-    : searchStep.INTRO
-  );
+  const [step, setStep] = useState<searchStep>(getLoadingOrIntroStep());
   const [numSearchResults, setNumSearchResults] = useState<number>(0);
   const [searchResults, setSearchResults] = useState<DataHubSearchResult[]>([]);
   const [allExpanded, setAllExpanded] = useState<boolean>(false);
@@ -87,26 +96,12 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
 
   useEffect(() => {
     if (query.datatype === 'raster' && argsValidationComplete) {
-      console.log('Calling updateSearchExtent…');
       updateSearchExtent();
     }
   }, [argsValidationComplete]);
 
   useEffect(() => {
-    if (query.tags.length > 1 && query.tags[1] === "LAND USE/LAND COVER") {
-      console.log([argsValidationComplete, aoiIsValid, searchExtentUpdateComplete, query.extent]);
-    }
-    if (
-      query.datatype === 'raster'
-      && (!argsValidationComplete || (aoiIsValid && !searchExtentUpdateComplete))
-    ) {
-      // Disallow searching for a raster while waiting for AOI validation or
-      // for a valid extent.
-      setStep(searchStep.LOADING);
-    } else {
-      // Allow search or render "Invalid AOI" error as appropriate.
-      setStep(searchStep.INTRO);
-    }
+    setStep(getLoadingOrIntroStep());
   }, [argsValidationComplete, aoiIsValid, searchExtentUpdateComplete]);
 
   useEffect(() => {
@@ -114,13 +109,24 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
     // element (typically a heading) that provides a summary of new content,
     // whenever modal content changes. If a designated content summary element
     // does not exist, the modal itself receives focus.
-    const contentSummaryElement: HTMLElement | null = autoFocusRef.current?.dialog?.querySelector(autoFocusSelector);
-    if (contentSummaryElement) {
-      contentSummaryElement.focus();
-    } else {
-      autoFocusRef.current?.dialog?.focus();
+    if (show) {
+      const contentSummaryElement: HTMLElement | null = autoFocusRef.current?.dialog?.querySelector(autoFocusSelector);
+      if (contentSummaryElement) {
+        contentSummaryElement.focus();
+        // Auto-focusing a specific element can help screen reader users get
+        // timely information in a scenario (such as this) where aria-live
+        // regions aren't practical. But it's not ideal to include a
+        // non-interactive element in the tab order, so as soon as the user
+        // moves focus elsewhere, we remove tabindex from the auto-focused
+        // element.
+        contentSummaryElement.addEventListener('blur', () => {
+          contentSummaryElement.removeAttribute('tabindex');
+        });
+      } else {
+        autoFocusRef.current?.dialog?.focus();
+      }
     }
-  }, [step]);
+  }, [show, step]);
 
   const search = async () => {
     setStep(searchStep.SEARCHING);
@@ -187,10 +193,11 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
   };
 
   const close = () => {
-    // Setting step to 0 "resets" modal state each time it closes.
-    // @TODO: ¿consider preserving step number to prevent repeated user interactions,
-    // perhaps resetting step number only if/when query params have changed?
-    setStep(0);
+    // Reset modal to loading or intro step each time it closes.
+    // @TODO: Consider preserving step number to prevent repeated user
+    // interactions and/or repeated Data Hub queries, resetting step only
+    // if/when query params have changed.
+    setStep(getLoadingOrIntroStep());
     closeModal();
   };
 
