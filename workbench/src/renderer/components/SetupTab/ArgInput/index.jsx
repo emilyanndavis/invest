@@ -160,7 +160,8 @@ export default function ArgInput({
   touched = false, isValid = undefined, validationMessage = '',
   updateArgValues, handleFocus, selectFile, enabled,
   dropdownOptions = undefined, inputDropHandler, scrollEventCount = 0,
-  aoiInputName, aoiIsValid, searchExtent, updateSearchExtent,
+  aoiInputName, argsValidationComplete, aoiIsValid,
+  searchExtent, searchExtentUpdateComplete, updateSearchExtent,
   searchCollections, clearSearchCollections, searchSiblingType, selectSearchResult,
   requestFocusOnAoiInput, setReadyToFocusOnAoi, resetAoiFocusState, autoFocus,
 }) {
@@ -251,7 +252,6 @@ export default function ArgInput({
   const openSearch = () => {
     setShowSearchModal(true);
     setReadyToFocusOnAoi(false);
-    updateSearchExtent();
   };
 
   const handleFocusOnSearchBtn = () => {
@@ -302,8 +302,11 @@ export default function ArgInput({
           closeModal={() => setShowSearchModal(false)}
           query={searchQuery}
           aoiInputName={aoiInputName}
+          argsValidationComplete={argsValidationComplete}
           aoiIsValid={aoiIsValid}
           requestFocusOnAoiInput={requestFocusOnAoiInput}
+          updateSearchExtent={updateSearchExtent}
+          searchExtentUpdateComplete={searchExtentUpdateComplete}
           selectSearchResult={(url, collections) => onSelectSearchResult(argkey, url, collections)}
         />
       </>

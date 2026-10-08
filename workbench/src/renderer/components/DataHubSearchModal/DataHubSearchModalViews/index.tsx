@@ -16,6 +16,23 @@ import {
 import { openLinkInBrowser } from '../../../utils';
 import { handleClickFindLogfiles } from '../../../menubar/handlers';
 
+export function DataHubSearchLoadingContent() {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <h2
+        className="visually-hidden"
+        id={searchModalAutoFocusId}
+        tabIndex={0}
+      >
+        {t('Please wait')}
+      </h2>
+      <Spinner animation="border" role="status" className="search-spinner"></Spinner>
+    </>
+  );
+}
+
 export function DataHubSearchIntroContent(
   props: {
     aoiInputName: string,

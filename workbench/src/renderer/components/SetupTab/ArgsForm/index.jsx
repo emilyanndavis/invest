@@ -34,6 +34,7 @@ class ArgsForm extends React.Component {
       focusOnAoiRequested: false,
       readyToFocusOnAoi: false,
       searchExtent: [],
+      searchExtentUpdateComplete: false,
       searchCollections: {
         [DataHubSearchSiblingType.LULC]: [],
         [DataHubSearchSiblingType.BIOPHYSICAL_TABLE]: [],
@@ -127,24 +128,95 @@ class ArgsForm extends React.Component {
     }
   }
 
-  cachedAoiPath = '';
+  cachedBoundingBoxes = {
+    '': [],
+  };
+  currentBoundingBox = [];
+  pendingAoiPaths = {};
+  aoiBboxCallStack = [];
+
   updateSearchExtent = () => {
-    const { aoiInputId, argsValidation, argsValues } = this.props;
+    const { aoiInputId, argsValidation, argsValidationComplete, argsValues } = this.props;
     const aoiIsValid = argsValidation[aoiInputId]?.valid || false;
-    const aoiPath = argsValues[aoiInputId]?.value || '';
-    // Fetch AOI bounding box if we don't already have it
-    // (i.e., if aoiPath has changed since the last bounding box calculation).
-    if (aoiIsValid && aoiPath !== this.cachedAoiPath) {
-      // Clear extent to avoid displaying previous values while awaiting update.
-      this.setState({searchExtent: []});
+    // Locally set aoiPath to '' if AOI is invalid. This simplifies later logic.
+    const aoiPath = aoiIsValid ? (argsValues[aoiInputId]?.value || '') : '';
+
+    // If awaiting validation
+    // OR if awaiting a bounding box calculation for this aoiPath
+    // OR if the bounding box is known and unchanged from the last update,
+    // do nothing.
+    if (
+      !argsValidationComplete
+      || aoiPath in this.pendingAoiPaths
+      || (
+        aoiPath in this.cachedBoundingBoxes
+        && this.currentBoundingBox === this.cachedBoundingBoxes[aoiPath]
+      )
+    ) {
+      console.log('Bbox is unchanged, or bbox calculation for this aoiPath is in progress. Goodbye.');
+      return;
+    }
+
+    // Signal that an update is in progress.
+    this.setState({
+      searchExtentUpdateComplete: false,
+    });
+
+    // Store timestamp in call stack.
+    // State will be updated only if this is the latest call.
+    const timestamp = Date.now();
+    this.aoiBboxCallStack.push(timestamp);
+    console.log(this.aoiBboxCallStack);
+
+    if (
+      aoiPath in this.cachedBoundingBoxes
+      && this.currentBoundingBox !== this.cachedBoundingBoxes[aoiPath]
+    ) {
+      // If AOI bounding box is already known AND it is not the current
+      // bounding box, update state using cached value. Otherwise, do nothing.
+      // Since this operation doesn't involve an async call, it's unlikely
+      // we're handling an outdated call to updateSearchExtent. But it's worth
+      // checking, just in case.
+      const stackSize = this.aoiBboxCallStack.length;
+      if (stackSize && this.aoiBboxCallStack[stackSize - 1] === timestamp) {
+        console.log(`Bounding box already cached for this AOI path ('${aoiPath}'). Clearing call stack…`);
+        this.aoiBboxCallStack = [];
+        this.currentBoundingBox = this.cachedBoundingBoxes[aoiPath];
+        this.setState({
+          searchExtent: this.currentBoundingBox,
+          searchExtentUpdateComplete: true,
+        });
+      } else {
+        console.log('This call is outdated (bbox already cached).');
+      }
+    } else if (
+      !(aoiPath in this.cachedBoundingBoxes)
+      && !(aoiPath in this.pendingAoiPaths)
+    ) {
+      // Fetch AOI bounding box if we don't already have it AND
+      // if there isn't already an active bounding box request using this AOI.
+      this.pendingAoiPaths[aoiPath] = true;
+      console.log(`Fetching bounding box for ${aoiPath}…`);
       getVectorBoundingBox(
         { vector_path: aoiPath }
       ).then(({ vector_bbox }) => {
-        this.setState({
-          ...this.state,
-          searchExtent: vector_bbox
-        });
-        this.cachedAoiPath = aoiPath;
+        // @TODO: Extract repeated code into a separate function.
+        const stackSize = this.aoiBboxCallStack.length;
+        if (stackSize && this.aoiBboxCallStack[stackSize - 1] === timestamp) {
+          console.log('Received response to latest fetch bounding box call. Clearing call stack…');
+          this.aoiBboxCallStack = [];
+          this.currentBoundingBox = vector_bbox;
+          this.setState({
+            searchExtent: this.currentBoundingBox,
+            searchExtentUpdateComplete: true,
+          });
+          // @TODO: ¿Is it sufficient to delete only this aoiPath, or should the entire object be cleared?
+          delete this.pendingAoiPaths[aoiPath];
+          this.cachedBoundingBoxes[aoiPath] = vector_bbox;
+          console.log(this.cachedBoundingBoxes);
+        } else {
+          console.log('This call is outdated (new AOI path).');
+        }
       });
     }
   };
@@ -227,6 +299,7 @@ class ArgsForm extends React.Component {
       argsSpec,
       argsValues,
       argsValidation,
+      argsValidationComplete,
       argsEnabled,
       argsDropdownOptions,
       userguide,
@@ -261,8 +334,10 @@ class ArgsForm extends React.Component {
             value={argsValues[argkey].value}
             scrollEventCount={scrollEventCount}
             aoiInputName={argsSpec[aoiInputId]?.name || ''}
+            argsValidationComplete={argsValidationComplete}
             aoiIsValid={argsValidation[aoiInputId]?.valid || false}
             searchExtent={this.state.searchExtent}
+            searchExtentUpdateComplete={this.state.searchExtentUpdateComplete}
             updateSearchExtent={this.updateSearchExtent}
             searchCollections={siblingCollections}
             clearSearchCollections={this.clearSearchCollections}
