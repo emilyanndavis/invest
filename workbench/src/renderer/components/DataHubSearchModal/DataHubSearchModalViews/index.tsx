@@ -25,7 +25,7 @@ export function DataHubSearchLoadingContent() {
         <span
           className="visually-hidden"
           id={searchModalAutoFocusId}
-          tabIndex={0}
+          tabIndex={-1}
         >
           {t('Please wait')}
         </span>
@@ -50,7 +50,7 @@ export function DataHubSearchIntroContent(
         ? <p
             id={searchModalAutoFocusId}
             className={searchModalContentSummaryCssClass}
-            tabIndex={0}
+            tabIndex={-1}
           >
             {t(`Search the Natural Capital Alliance Data Hub for datasets you can
               use in InVEST without having to download them first.`)}
@@ -59,7 +59,7 @@ export function DataHubSearchIntroContent(
             <div
               className={`search-error ${searchModalContentSummaryCssClass}`}
               id={searchModalAutoFocusId}
-              tabIndex={0}
+              tabIndex={-1}
             >
               <TbZoomCancel aria-label={t('Error')} className="error-icon" />
               <p>
@@ -86,7 +86,7 @@ export function DataHubSearchSearchingContent() {
         <span
           className="visually-hidden"
           id={searchModalAutoFocusId}
-          tabIndex={0}
+          tabIndex={-1}
         >
           {t('Searching')}
         </span>
@@ -119,7 +119,7 @@ export function DataHubSearchResultsContent(
             <h2
               className={`h5 m-0 ${searchModalContentSummaryCssClass}`}
               id={searchModalAutoFocusId}
-              tabIndex={0}
+              tabIndex={-1}
             >
               {t('An error occurred.')}
             </h2>
@@ -145,7 +145,7 @@ export function DataHubSearchResultsContent(
                   <h2
                     className={`h5 m-0 ${searchModalContentSummaryCssClass}`}
                     id={searchModalAutoFocusId}
-                    tabIndex={0}
+                    tabIndex={-1}
                   >
                     {numSearchResults == 1 ? t('1 result found.') : t(`${numSearchResults} results found.`)}
                   </h2>
@@ -173,7 +173,7 @@ export function DataHubSearchResultsContent(
                 <h2
                   className={`h5 m-0 ${searchModalContentSummaryCssClass}`}
                   id={searchModalAutoFocusId}
-                  tabIndex={0}
+                  tabIndex={-1}
                 >
                   {t('No results found.')}
                 </h2>

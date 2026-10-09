@@ -113,15 +113,6 @@ export default function DataHubSearchModal(props: DataHubSearchModalProps) {
       const contentSummaryElement: HTMLElement | null = autoFocusRef.current?.dialog?.querySelector(autoFocusSelector);
       if (contentSummaryElement) {
         contentSummaryElement.focus();
-        // Auto-focusing a specific element can help screen reader users get
-        // timely information in a scenario (such as this) where aria-live
-        // regions aren't practical. But it's not ideal to include a
-        // non-interactive element in the tab order, so as soon as the user
-        // moves focus elsewhere, we remove tabindex from the auto-focused
-        // element.
-        contentSummaryElement.addEventListener('blur', () => {
-          contentSummaryElement.removeAttribute('tabindex');
-        });
       } else {
         autoFocusRef.current?.dialog?.focus();
       }
